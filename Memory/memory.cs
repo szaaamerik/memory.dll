@@ -331,7 +331,7 @@ namespace Memory
         public bool ChangeProtection(UIntPtr address, string code, MemoryProtection newProtection, out MemoryProtection oldProtection, string file = "")
         {
             UIntPtr addy = code != ""
-                ? GetCode(address.ToString("X") + "," + code, file)
+                ? GetCode(address.ToString("X") + code, file)
                 : address;
             if (addy != UIntPtr.Zero
                 && MProc.Handle != IntPtr.Zero)
