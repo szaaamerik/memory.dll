@@ -11,8 +11,8 @@ namespace Memory
 {
     public partial class Mem
     {
-        ConcurrentDictionary<string, CancellationTokenSource> _freezeTokenSrcs =
-            new ConcurrentDictionary<string, CancellationTokenSource>();
+        ConcurrentDictionary<UIntPtr, CancellationTokenSource> _freezeTokenSrcs =
+            new();
 
         /// <summary>
         /// Freeze a value to an address.
@@ -20,7 +20,49 @@ namespace Memory
         /// <param name="address">Your address</param>
         /// <param name="value">Value to freeze</param>
         /// <param name="file">ini file to read address from (OPTIONAL)</param>
-        public bool FreezeValue<T>(string address, T value, string file = "")
+        public bool FreezeValue<T>(string address, T value, int speed = 25, string file = "")
+        {
+            CancellationTokenSource cts = new();
+            UIntPtr addr = GetCode(address, file);
+
+            lock (_freezeTokenSrcs)
+            {
+                if (_freezeTokenSrcs.ContainsKey(addr))
+                {
+                    Debug.WriteLine("Changing Freezing Address " + address + " Value " + value.ToString());
+                    try
+                    {
+                        _freezeTokenSrcs[addr].Cancel();
+                        _freezeTokenSrcs.TryRemove(addr, out _);
+                    }
+                    catch
+                    {
+                        Debug.WriteLine("ERROR: Avoided a crash. Address " + address + " was not frozen.");
+                        return false;
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine("Adding Freezing Address " + address + " Value " + value);
+                }
+
+                _freezeTokenSrcs.TryAdd(addr, cts);
+            }
+
+            Task.Factory.StartNew(() =>
+                {
+                    while (!cts.Token.IsCancellationRequested)
+                    {
+                        WriteMemory(addr, "", value, file);
+                        Thread.Sleep(speed);
+                    }
+                },
+                cts.Token);
+
+            return true;
+        }
+        
+        public bool FreezeValue<T>(UIntPtr address, T value, int speed = 25, string file = "")
         {
             CancellationTokenSource cts = new();
 
@@ -28,7 +70,7 @@ namespace Memory
             {
                 if (_freezeTokenSrcs.ContainsKey(address))
                 {
-                    Debug.WriteLine("Changing Freezing Address " + address + " Value " + value.ToString());
+                    Debug.WriteLine("Changing Freezing Address " + address + " Value " + value);
                     try
                     {
                         _freezeTokenSrcs[address].Cancel();
@@ -52,8 +94,8 @@ namespace Memory
                 {
                     while (!cts.Token.IsCancellationRequested)
                     {
-                        WriteMemory(address, value, file);
-                        Thread.Sleep(25);
+                        WriteMemory(address, "", value, file);
+                        Thread.Sleep(speed);
                     }
                 },
                 cts.Token);
@@ -66,6 +108,28 @@ namespace Memory
         /// </summary>
         /// <param name="address">address where frozen value is stored</param>
         public void UnfreezeValue(string address)
+        {
+            UIntPtr addy = GetCode(address);
+            Debug.WriteLine("Un-Freezing Address " + address);
+            try
+            {
+                lock (_freezeTokenSrcs)
+                {
+                    _freezeTokenSrcs[addy].Cancel();
+                    _freezeTokenSrcs.TryRemove(addy, out _);
+                }
+            }
+            catch
+            {
+                Debug.WriteLine("ERROR: Address " + address + " was not frozen.");
+            }
+        }
+
+        /// <summary>
+        /// Unfreeze a frozen value at an address
+        /// </summary>
+        /// <param name="address">address where frozen value is stored</param>
+        public void UnfreezeValue(UIntPtr address)
         {
             Debug.WriteLine("Un-Freezing Address " + address);
             try
