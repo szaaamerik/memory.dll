@@ -19,6 +19,7 @@ namespace Memory
         /// </summary>
         /// <param name="address">Your address</param>
         /// <param name="value">Value to freeze</param>
+        /// <param name="speed">The number of milliseconds to wait before setting the value again</param>
         /// <param name="file">ini file to read address from (OPTIONAL)</param>
         public bool FreezeValue<T>(string address, T value, int speed = 25, string file = "")
         {

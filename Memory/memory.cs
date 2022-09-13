@@ -29,7 +29,7 @@ namespace Memory
             {
                 // 64 bit
                 MEMORY_BASIC_INFORMATION64 tmp64 = new();
-                retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp64, new UIntPtr((uint)Marshal.SizeOf(tmp64)));
+                retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp64, new((uint)Marshal.SizeOf(tmp64)));
 
                 lpBuffer.BaseAddress = tmp64.BaseAddress;
                 lpBuffer.AllocationBase = tmp64.AllocationBase;
@@ -41,9 +41,9 @@ namespace Memory
 
                 return retVal;
             }
-            MEMORY_BASIC_INFORMATION32 tmp32 = new MEMORY_BASIC_INFORMATION32();
+            MEMORY_BASIC_INFORMATION32 tmp32 = new();
 
-            retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp32, new UIntPtr((uint)Marshal.SizeOf(tmp32)));
+            retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp32, new((uint)Marshal.SizeOf(tmp32)));
 
             lpBuffer.BaseAddress = tmp32.BaseAddress;
             lpBuffer.AllocationBase = tmp32.AllocationBase;
@@ -64,11 +64,6 @@ namespace Memory
         /// <param name="failReason">Show reason open process fails</param>
         public bool OpenProcess(int pid, out string failReason)
         {
-            /*if (!IsAdmin())
-            {
-                Debug.WriteLine("WARNING: This program may not be running with raised privileges! Visit https://github.com/erfg12/memory.dll/wiki/Administrative-Privileges");
-            }*/
-
             if (pid <= 0)
             {
                 failReason = "OpenProcess given proc ID 0.";
@@ -87,7 +82,7 @@ namespace Memory
             {
                 MProc.Process = Process.GetProcessById(pid);
 
-                if (MProc.Process != null && !MProc.Process.Responding)
+                if (MProc.Process is { Responding: false })
                 {
                     Debug.WriteLine("ERROR: OpenProcess: Process is not responding or null.");
                     failReason = "Process is not responding or null.";
@@ -352,7 +347,6 @@ namespace Memory
         /// <returns></returns>
         public UIntPtr GetCode(string name, string path = "", int size = 8)
         {
-            string theCode;
             if (MProc == null)
                 return UIntPtr.Zero;
 
@@ -363,18 +357,15 @@ namespace Memory
                 return Get64BitCode(name, path, size); //jump over to 64bit code grab
             }
 
-            theCode = !string.IsNullOrEmpty(path) ? LoadCode(name, path) : name;
+            string theCode = !string.IsNullOrEmpty(path) ? LoadCode(name, path) : name;
 
             if (string.IsNullOrEmpty(theCode))
             {
                 //Debug.WriteLine("ERROR: LoadCode returned blank. NAME:" + name + " PATH:" + path);
                 return UIntPtr.Zero;
             }
-            else
-            {
-                //Debug.WriteLine("Found code=" + theCode + " NAME:" + name + " PATH:" + path);
-            }
 
+            //Debug.WriteLine("Found code=" + theCode + " NAME:" + name + " PATH:" + path);
             // remove spaces
             if (theCode.Contains(' '))
                 theCode = theCode.Replace(" ", String.Empty);
@@ -497,7 +488,7 @@ namespace Memory
         }
 
         /// <summary>
-        /// Retrieve mProc.Process module baseaddress by name
+        /// Retrieve mProc.Process module base address by name
         /// </summary>
         /// <param name="name">name of module</param>
         /// <returns></returns>
@@ -515,8 +506,7 @@ namespace Memory
         /// <returns></returns>
         public UIntPtr Get64BitCode(string name, string path = "", int size = 16)
         {
-            string theCode;
-            theCode = !string.IsNullOrEmpty(path) ? LoadCode(name, path) : name;
+            string theCode = !string.IsNullOrEmpty(path) ? LoadCode(name, path) : name;
 
             if (string.IsNullOrEmpty(theCode))
                 return UIntPtr.Zero;
@@ -534,7 +524,7 @@ namespace Memory
             if (!theCode.Contains('+') && !theCode.Contains(','))
             {
                 try {
-                    return new UIntPtr(Convert.ToUInt64(theCode, 16));
+                    return new(Convert.ToUInt64(theCode, 16));
                 }
                 catch
                 {
@@ -1077,7 +1067,7 @@ namespace Memory
                     mbi.RegionSize += si.AllocationGranularity - (mbi.RegionSize % si.AllocationGranularity);
 
                 UIntPtr previous = current;
-                current = new UIntPtr(((ulong)mbi.BaseAddress) + (ulong)mbi.RegionSize);
+                current = new((ulong)mbi.BaseAddress + (ulong)mbi.RegionSize);
 
                 if ((long)current >= (long)maxAddress)
                     return ret;
@@ -1162,7 +1152,7 @@ namespace Memory
         /// <returns></returns>
         public static string ByteArrayToHexString(byte[] ba)
         {
-            StringBuilder hex = new StringBuilder(ba.Length * 2);
+            StringBuilder hex = new(ba.Length * 2);
             int i = 1;
             foreach (byte b in ba)
             {
@@ -1226,7 +1216,7 @@ namespace Memory
                 //arrLength += buffer.Length;
 
                 procMinAddressL += memInfo.RegionSize;
-                procMinAddress = new UIntPtr((ulong)procMinAddressL);
+                procMinAddress = new((ulong)procMinAddressL);
             }
 
 
@@ -1265,7 +1255,7 @@ namespace Memory
             IntPtr buf = Marshal.AllocHGlobal(IntPtr.Size);
             try
             {
-                int result = Imps.NtQueryInformationThread(hThread,
+                int result = NtQueryInformationThread(hThread,
                                  ThreadInfoClass.ThreadQuerySetWin32StartAddress,
                                  buf, IntPtr.Size, IntPtr.Zero);
                 if (result != 0)
@@ -1290,8 +1280,8 @@ namespace Memory
             {
                 if (thd.Id != threadId)
                     continue;
-                else
-                    Debug.WriteLine("Found thread " + threadId);
+                
+                Debug.WriteLine("Found thread " + threadId);
 
                 IntPtr threadHandle = OpenThread(ThreadAccess.SuspendResume, false, (uint)threadId);
 
@@ -1304,12 +1294,10 @@ namespace Memory
                     _ = CloseHandle(threadHandle);
                     break;
                 }
-                else
-                {
-                    Debug.WriteLine("Thread suspended!");
-                    _ = CloseHandle(threadHandle);
-                    return true;
-                }
+                
+                Debug.WriteLine("Thread suspended!");
+                _ = CloseHandle(threadHandle);
+                return true;
             }
             return false;
         }
