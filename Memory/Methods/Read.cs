@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using System.Text;
@@ -36,11 +37,11 @@ namespace Memory
         /// <param name="length">The maximum bytes to read.</param>
         /// <param name="file">path and name of ini file.</param>
         /// <returns>The bytes read or null</returns>
-        public byte[] ReadBytes(string code, long length, string file = "")
+        public byte[] ReadBytes(string code, int length = 4, string file = "")
         {
             byte[] memory = new byte[length];
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return null;
 
             return !ReadProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)length, IntPtr.Zero) ? null : memory;
@@ -58,7 +59,7 @@ namespace Memory
             byte[] memory = new byte[4];
 
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             try
@@ -85,23 +86,45 @@ namespace Memory
         /// <param name="code">address, module + pointer + offset, module + offset OR label in .ini file.</param>
         /// <param name="file">path and name of ini file. (OPTIONAL)</param>
         /// <param name="length">length of bytes to read (OPTIONAL)</param>
-        /// <param name="zeroTerminated">terminate string at null char</param>
         /// <param name="stringEncoding">System.Text.Encoding.UTF8 (DEFAULT). Other options: ascii, unicode, utf32, utf7</param>
         /// <returns></returns>
-        public string ReadString(string code, string file = "", int length = 32, bool zeroTerminated = true, Encoding stringEncoding = null)
+        public string ReadString(string code, int length = 32, string file = "", Encoding stringEncoding = null)
         {
-            if (stringEncoding == null)
-                stringEncoding = Encoding.UTF8;
+            UIntPtr theCode = GetCode(code, file);
+            if (theCode == UIntPtr.Zero)
+                return "";
+            
+            stringEncoding ??= Encoding.UTF8;
 
             byte[] memoryNormal = new byte[length];
-            UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
-                return "";
+            
 
-            if (ReadProcessMemory(MProc.Handle, theCode, memoryNormal, (UIntPtr)length, IntPtr.Zero))
-                return (zeroTerminated) ? stringEncoding.GetString(memoryNormal).Split('\0')[0] : stringEncoding.GetString(memoryNormal);
-            else
+            return ReadProcessMemory(MProc.Handle, theCode, memoryNormal, (UIntPtr)length, IntPtr.Zero)
+                ? stringEncoding.GetString(memoryNormal)
+                : null;
+        }
+        
+        public string ReadString(string code, string file = "", Encoding stringEncoding = null)
+        {
+            UIntPtr theCode = GetCode(code, file);
+            if (theCode == UIntPtr.Zero)
                 return "";
+            
+            stringEncoding ??= Encoding.UTF8;
+            
+            List<byte> memoryNormal = new();
+            
+            // read bytes until we hit a null byte (while loop)
+            byte[] memory = new byte[1];
+            while (ReadProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)1, IntPtr.Zero))
+            {
+                if (memory[0] == 0)
+                    break;
+                memoryNormal.Add(memory[0]);
+                theCode += 1;
+            }
+            
+            return stringEncoding.GetString(memoryNormal.ToArray());
         }
 
         /// <summary>
@@ -116,7 +139,7 @@ namespace Memory
             byte[] memory = new byte[8];
 
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             try
@@ -156,7 +179,7 @@ namespace Memory
         {
             byte[] memory = new byte[4];
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             return ReadProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)4, IntPtr.Zero)
@@ -175,7 +198,7 @@ namespace Memory
             byte[] memory = new byte[16];
             UIntPtr theCode = GetCode(code, file);
 
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             if (ReadProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)8, IntPtr.Zero))
@@ -194,7 +217,7 @@ namespace Memory
         {
             byte[] memory = new byte[4];
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             return ReadProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)4, IntPtr.Zero)
@@ -212,7 +235,7 @@ namespace Memory
         {
             byte[] memory = new byte[2];
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             return ReadProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)2, IntPtr.Zero)
@@ -230,7 +253,7 @@ namespace Memory
         {
             byte[] memory = new byte[8];
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             return ReadProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)8, IntPtr.Zero)
@@ -249,7 +272,7 @@ namespace Memory
         {
             byte[] memory = new byte[4];
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             UIntPtr newCode = UIntPtr.Add(theCode, moveQty);
@@ -271,7 +294,7 @@ namespace Memory
         {
             byte[] memory = new byte[4];
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             UIntPtr newCode = UIntPtr.Add(theCode, moveQty);
@@ -292,7 +315,7 @@ namespace Memory
         {
             byte[] memory = new byte[8];
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             UIntPtr newCode = UIntPtr.Add(theCode, moveQty);
@@ -313,7 +336,7 @@ namespace Memory
             byte[] memoryTiny = new byte[4];
 
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             return ReadProcessMemory(MProc.Handle, theCode, memoryTiny, (UIntPtr)2, IntPtr.Zero)
@@ -332,7 +355,7 @@ namespace Memory
             byte[] memoryTiny = new byte[1];
 
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return 0;
 
             return ReadProcessMemory(MProc.Handle, theCode, memoryTiny, (UIntPtr)1, IntPtr.Zero) ? memoryTiny[0] : 0;
@@ -352,7 +375,7 @@ namespace Memory
 
             bool[] ret = new bool[8];
 
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return ret;
 
             if (!ReadProcessMemory(MProc.Handle, theCode, buf, (UIntPtr)1, IntPtr.Zero))
@@ -374,7 +397,7 @@ namespace Memory
             byte[] memory = new byte[8];
 
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return new();
 
             if (!ReadProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)8, IntPtr.Zero))
@@ -388,7 +411,7 @@ namespace Memory
             byte[] memory = new byte[12];
 
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return new();
 
             if (!ReadProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)12, IntPtr.Zero))
@@ -402,7 +425,7 @@ namespace Memory
             byte[] memory = new byte[16];
 
             UIntPtr theCode = GetCode(code, file);
-            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+            if (theCode == UIntPtr.Zero)
                 return new();
 
             if (!ReadProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)16, IntPtr.Zero))
@@ -479,7 +502,7 @@ namespace Memory
             return ReadProcessMemory(MProc.Handle, addy, memory, (UIntPtr)length,
                 IntPtr.Zero)
                 ? memory
-                : Array.Empty<byte>();
+                : null;
         }
 
         public int ReadInt(UIntPtr address, string offsets, string file = "")
@@ -493,16 +516,42 @@ namespace Memory
                 : 0;
         }
 
-        public string ReadString(UIntPtr address, string offsets, string file = "")
+        public string ReadString(UIntPtr address, string offsets, int length = 32, string file = "", Encoding stringEncoding = null)
         {
-            byte[] memoryNormal = new byte[32];
             UIntPtr addy = offsets != ""
                 ? GetCode(address.ToString("X") + offsets, file)
                 : address;
-            return ReadProcessMemory(MProc.Handle, addy, memoryNormal, (UIntPtr)32,
+            
+            stringEncoding ??= Encoding.UTF8;
+
+            byte[] memoryNormal = new byte[length];
+            
+            return ReadProcessMemory(MProc.Handle, addy, memoryNormal, (UIntPtr)length,
                 IntPtr.Zero)
-                ? CutString(Encoding.ASCII.GetString(memoryNormal))
-                : "";
+                ? stringEncoding.GetString(memoryNormal)
+                : null;
+        }
+
+        public string ReadString(UIntPtr address, string offsets, string file = "", Encoding stringEncoding = null)
+        {
+            UIntPtr addy = offsets != ""
+                ? GetCode(address.ToString("X") + offsets, file)
+                : address;
+            
+            stringEncoding ??= Encoding.UTF8;
+
+            List<byte> memoryNormal = new();
+
+            byte[] memory = new byte[1];
+            while (ReadProcessMemory(MProc.Handle, addy, memory, (UIntPtr)1, IntPtr.Zero))
+            {
+                if (memory[0] == 0)
+                    break;
+                memoryNormal.Add(memory[0]);
+                addy += 1;
+            }
+            
+            return stringEncoding.GetString(memoryNormal.ToArray());
         }
         
         public long ReadLong(UIntPtr address, string offsets, string file = "")
@@ -579,6 +628,7 @@ namespace Memory
             Type type = typeof(T);
             object readOutput = true switch
             {
+                true when type == typeof(bool) => ReadByte(address, file) != 0,
                 true when type == typeof(byte) => ReadByte(address, file),
                 true when type == typeof(short) => ReadShort(address, file),
                 true when type == typeof(int) => ReadInt(address, file),
@@ -592,6 +642,21 @@ namespace Memory
                 true when type == typeof(Vector3) => ReadVector3(address, file),
                 true when type == typeof(Vector4) => ReadVector4(address, file),
                 true when type == typeof(string) => ReadString(address, file),
+                _ => null
+            };
+
+            if (readOutput != null)
+                return (T)Convert.ChangeType(readOutput, typeof(T));
+            return default;
+        }
+
+        public T ReadMemory<T>(string address, int length, string file = "")
+        {
+            Type type = typeof(T);
+            object readOutput = true switch
+            {
+                true when type == typeof(string) => ReadString(address, length, file),
+                true when type == typeof(byte[]) => ReadBytes(address, length, file),
                 _ => null
             };
 
@@ -618,6 +683,21 @@ namespace Memory
                 true when type == typeof(Vector3) => ReadVector3(address, code, file),
                 true when type == typeof(Vector4) => ReadVector4(address, code, file),
                 true when type == typeof(string) => ReadString(address, code, file),
+                _ => null
+            };
+
+            if (readOutput != null)
+                return (T)Convert.ChangeType(readOutput, typeof(T));
+            return default;
+        }
+        
+        public T ReadMemory<T>(UIntPtr address, string code, int length, string file = "")
+        {
+            Type type = typeof(T);
+            object readOutput = true switch
+            {
+                true when type == typeof(string) => ReadString(address, code, length, file),
+                true when type == typeof(byte[]) => ReadBytes(address, code, length, file),
                 _ => null
             };
 
