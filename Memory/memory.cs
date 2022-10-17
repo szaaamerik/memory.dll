@@ -323,7 +323,7 @@ namespace Memory
         public bool ChangeProtection(string code, MemoryProtection newProtection, out MemoryProtection oldProtection,
             string file = "")
         {
-            UIntPtr theCode = GetCode(code, file);
+            UIntPtr theCode = Get64BitCode(code, file);
             if (theCode == UIntPtr.Zero
                 || MProc.Handle == IntPtr.Zero)
             {
@@ -339,7 +339,7 @@ namespace Memory
             out MemoryProtection oldProtection, string file = "")
         {
             UIntPtr addy = code != ""
-                ? GetCode(address.ToString("X") + code, file)
+                ? Get64BitCode(address.ToString("X") + code, file)
                 : address;
             if (addy != UIntPtr.Zero
                 && MProc.Handle != IntPtr.Zero)
@@ -736,7 +736,7 @@ namespace Memory
                 return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
             // to better match existing code
 
-            UIntPtr theCode = GetCode(code, file);
+            UIntPtr theCode = Get64BitCode(code, file);
 
             // if x64 we need to try to allocate near the address so we dont run into the +-2GB limit of the 0xE9 jmp
 
@@ -792,7 +792,7 @@ namespace Memory
                 return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
             // to better match existing code
 
-            UIntPtr theCode = GetCode(code, file);
+            UIntPtr theCode = Get64BitCode(code, file);
             UIntPtr address = theCode;
 
             // We're using a 14-byte 0xFF jmp instruction now, meaning no matter what we won't run into a limit.
@@ -837,7 +837,7 @@ namespace Memory
                 return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
             // to better match existing code
 
-            UIntPtr theCode = GetCode(code);
+            UIntPtr theCode = Get64BitCode(code);
             UIntPtr address = theCode;
 
             // This uses a 16-byte call instruction. Makes it easier to translate aob scripts that return at different places.
