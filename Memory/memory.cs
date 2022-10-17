@@ -1067,13 +1067,7 @@ namespace Memory
                      TrampolineType.Call => 16,
                      _ => throw new("Achievement unlocked: How Did We Get Here?")
                  };
-                 i < trampolineBytes.Length - type switch
-                 {
-                     TrampolineType.Jump => 5,
-                     TrampolineType.JumpFar => 14,
-                     TrampolineType.Call => 16,
-                     _ => throw new("Achievement unlocked: How Did We Get Here?")
-                 };
+                 i < trampolineBytes.Length;
                  i++)
             {
                 trampolineBytes[i] = 0x90;
@@ -1119,13 +1113,7 @@ namespace Memory
                      TrampolineType.Call => 16,
                      _ => throw new("Achievement unlocked: How Did We Get Here?")
                  };
-                 i < trampolineBytes.Length - type switch
-                 {
-                     TrampolineType.Jump => 5,
-                     TrampolineType.JumpFar => 14,
-                     TrampolineType.Call => 16,
-                     _ => throw new("Achievement unlocked: How Did We Get Here?")
-                 };
+                 i < trampolineBytes.Length;
                  i++)
             {
                 trampolineBytes[i] = 0x90;
