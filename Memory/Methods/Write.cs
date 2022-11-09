@@ -248,7 +248,6 @@ namespace Memory
                     break;
             }
 
-            //Debug.Write("DEBUG: Writing bytes [TYPE:" + type + " ADDR:" + theCode + "] " + String.Join(",", memory) + Environment.NewLine);
             MemoryProtection oldMemProt = 0x00;
             if (removeWriteProtection)
                 ChangeProtection(code, MemoryProtection.ExecuteReadWrite, out oldMemProt, file); // change protection
@@ -256,6 +255,26 @@ namespace Memory
             if (removeWriteProtection)
                 ChangeProtection(code, oldMemProt, out _, file); // restore
 
+            return writeProcMem;
+        }
+        public bool WriteMemory(string code, bool write, string file = "", bool removeWriteProtection = true)
+        {
+            byte[] memory = new byte[1];
+            
+            UIntPtr theCode = GetCode(code, file);
+            
+            if (theCode == UIntPtr.Zero || theCode.ToUInt64() < 0x10000)
+                return false;
+            
+            memory[0] = Convert.ToByte(write);
+            
+            MemoryProtection oldMemProt = 0x00;
+            if (removeWriteProtection)
+                ChangeProtection(code, MemoryProtection.ExecuteReadWrite, out oldMemProt, file); // change protection
+            bool writeProcMem = WriteProcessMemory(MProc.Handle, theCode, memory, (UIntPtr)1, IntPtr.Zero);
+            if (removeWriteProtection)
+                ChangeProtection(code, oldMemProt, out _, file); // restore
+            
             return writeProcMem;
         }
         

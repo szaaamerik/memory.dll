@@ -64,9 +64,18 @@ namespace Memory
 
         [DllImport("kernel32.dll")]
         public static extern bool ReadProcessMemory(IntPtr hProcess, UIntPtr lpBaseAddress, [Out] byte[] lpBuffer, UIntPtr nSize, IntPtr lpNumberOfBytesRead);
+        
+        [DllImport("kernel32.dll")]
+        public static extern bool ReadProcessMemory(IntPtr hProcess, UIntPtr lpBaseAddress, [Out] byte lpBuffer, UIntPtr nSize, IntPtr lpNumberOfBytesRead);
+        
+        [DllImport("kernel32.dll")]
+        public static extern bool ReadProcessMemory(IntPtr hProcess, UIntPtr lpBaseAddress, [Out] short lpBuffer, UIntPtr nSize, IntPtr lpNumberOfBytesRead);
 
         [DllImport("kernel32.dll")]
-        public static extern bool ReadProcessMemory(IntPtr hProcess, UIntPtr lpBaseAddress, [Out] IntPtr lpBuffer, UIntPtr nSize, out ulong lpNumberOfBytesRead);
+        public static extern bool ReadProcessMemory(IntPtr hProcess, UIntPtr lpBaseAddress, long lpBuffer, UIntPtr nSize, ulong lpNumberOfBytesRead);
+        
+        [DllImport("kernel32.dll")]
+        public static extern bool ReadProcessMemory(IntPtr hProcess, UIntPtr lpBaseAddress, IntPtr lpBuffer, UIntPtr nSize, out ulong lpNumberOfBytesRead);
 
         [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
         public static extern UIntPtr VirtualAllocEx(
