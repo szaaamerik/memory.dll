@@ -608,24 +608,31 @@ public partial class Mem
         }
         else if (!int.TryParse(offsets[0], out _)) //this is so genius
         {
-            base1 = (UIntPtr)GetModuleAddressByName(offsets[0]).ToInt64();
             string[] additions = offsets[0].Split('+');
+            base1 = (UIntPtr)GetModuleAddressByName(additions[0]).ToInt64();
             if (additions.Length > 1)
                 for (int i = 1; i < additions.Length; i++)
                     base1 += int.Parse(additions[i], NumberStyles.HexNumber);
         }
-        int[] offsetsInt = new int[offsets.Length];
-        for (int i = 0; i < offsets.Length; i++)
+        int[] offsetsInt = new int[offsets.Length - 1];
+        for (int i = 1; i < offsets.Length; i++)
         {
             string[] additions = offsets[i].Split('+');
-            offsetsInt[i] = int.Parse(additions[0], NumberStyles.HexNumber);
+            
+            offsetsInt[i - 1] = int.Parse(additions[0], NumberStyles.HexNumber);
             if (additions.Length > 1)
                 for (int j = 1; j < additions.Length; j++)
-                    offsetsInt[i] += int.Parse(additions[j], NumberStyles.HexNumber);
+                    offsetsInt[i - 1] += int.Parse(additions[j], NumberStyles.HexNumber);
         }
         UIntPtr address = base1;
         for (int i = 0; i < offsetsInt.Length; i++)
         {
+            if (i == 0) address = ReadMemory<UIntPtr>(base1);
+            if (i == offsetsInt.Length - 1)
+            {
+                address += offsetsInt[i];
+                return address;
+            }
             address = ReadMemory<UIntPtr>(address + offsetsInt[i]);
         }
         return address;

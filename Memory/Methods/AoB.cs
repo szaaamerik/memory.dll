@@ -237,7 +237,7 @@ namespace Memory
             ReadProcessMemory(MProc.Handle, item.CurrentBaseAddress, buffer, (UIntPtr)item.RegionSize, out ulong bytesRead);
 
             int result = 0 - aobPattern.Length;
-            List<long> ret = new List<long>();
+            List<long> ret = new();
             unsafe
             {
                 do
