@@ -11,1452 +11,1451 @@ using System.Threading.Tasks;
 using System.ComponentModel;
 using static Memory.Imps;
 
-namespace Memory
+namespace Memory;
+
+/// <summary>
+/// Memory.dll class. Full documentation at https://github.com/erfg12/memory.dll/wiki
+/// </summary>
+public partial class Mem
 {
-    /// <summary>
-    /// Memory.dll class. Full documentation at https://github.com/erfg12/memory.dll/wiki
-    /// </summary>
-    public partial class Mem
+    public Proc MProc = new();
+
+    public UIntPtr VirtualQueryEx(IntPtr hProcess, UIntPtr lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer)
     {
-        public Proc MProc = new();
+        UIntPtr retVal;
 
-        public UIntPtr VirtualQueryEx(IntPtr hProcess, UIntPtr lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer)
+        // TODO: Need to change this to only check once.
+        if (MProc.Is64Bit || IntPtr.Size == 8)
         {
-            UIntPtr retVal;
+            // 64 bit
+            MEMORY_BASIC_INFORMATION64 tmp64 = new();
+            retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp64, new((uint)Marshal.SizeOf(tmp64)));
 
-            // TODO: Need to change this to only check once.
-            if (MProc.Is64Bit || IntPtr.Size == 8)
-            {
-                // 64 bit
-                MEMORY_BASIC_INFORMATION64 tmp64 = new();
-                retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp64, new((uint)Marshal.SizeOf(tmp64)));
-
-                lpBuffer.BaseAddress = tmp64.BaseAddress;
-                lpBuffer.AllocationBase = tmp64.AllocationBase;
-                lpBuffer.AllocationProtect = tmp64.AllocationProtect;
-                lpBuffer.RegionSize = (long)tmp64.RegionSize;
-                lpBuffer.State = tmp64.State;
-                lpBuffer.Protect = tmp64.Protect;
-                lpBuffer.Type = tmp64.Type;
-
-                return retVal;
-            }
-
-            MEMORY_BASIC_INFORMATION32 tmp32 = new();
-
-            retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp32, new((uint)Marshal.SizeOf(tmp32)));
-
-            lpBuffer.BaseAddress = tmp32.BaseAddress;
-            lpBuffer.AllocationBase = tmp32.AllocationBase;
-            lpBuffer.AllocationProtect = tmp32.AllocationProtect;
-            lpBuffer.RegionSize = tmp32.RegionSize;
-            lpBuffer.State = tmp32.State;
-            lpBuffer.Protect = tmp32.Protect;
-            lpBuffer.Type = tmp32.Type;
+            lpBuffer.BaseAddress = tmp64.BaseAddress;
+            lpBuffer.AllocationBase = tmp64.AllocationBase;
+            lpBuffer.AllocationProtect = tmp64.AllocationProtect;
+            lpBuffer.RegionSize = (long)tmp64.RegionSize;
+            lpBuffer.State = tmp64.State;
+            lpBuffer.Protect = tmp64.Protect;
+            lpBuffer.Type = tmp64.Type;
 
             return retVal;
         }
 
-        /// <summary>
-        /// Open the PC game process with all security and access rights.
-        /// </summary>
-        /// <param name="pid">Use process name or process ID here.</param>
-        /// <returns>Process opened successfully or failed.</returns>
-        /// <param name="failReason">Show reason open process fails</param>
-        public bool OpenProcess(int pid, out string failReason)
+        MEMORY_BASIC_INFORMATION32 tmp32 = new();
+
+        retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp32, new((uint)Marshal.SizeOf(tmp32)));
+
+        lpBuffer.BaseAddress = tmp32.BaseAddress;
+        lpBuffer.AllocationBase = tmp32.AllocationBase;
+        lpBuffer.AllocationProtect = tmp32.AllocationProtect;
+        lpBuffer.RegionSize = tmp32.RegionSize;
+        lpBuffer.State = tmp32.State;
+        lpBuffer.Protect = tmp32.Protect;
+        lpBuffer.Type = tmp32.Type;
+
+        return retVal;
+    }
+
+    /// <summary>
+    /// Open the PC game process with all security and access rights.
+    /// </summary>
+    /// <param name="pid">Use process name or process ID here.</param>
+    /// <returns>Process opened successfully or failed.</returns>
+    /// <param name="failReason">Show reason open process fails</param>
+    public bool OpenProcess(int pid, out string failReason)
+    {
+        if (pid <= 0)
         {
-            if (pid <= 0)
+            failReason = "OpenProcess given proc ID 0.";
+            Debug.WriteLine("ERROR: OpenProcess given proc ID 0.");
+            return false;
+        }
+
+
+        if (MProc.Process != null && MProc.Process.Id == pid)
+        {
+            failReason = "mProc.Process is null";
+            return true;
+        }
+
+        try
+        {
+            MProc.Process = Process.GetProcessById(pid);
+
+            if (MProc.Process is { Responding: false })
             {
-                failReason = "OpenProcess given proc ID 0.";
-                Debug.WriteLine("ERROR: OpenProcess given proc ID 0.");
+                Debug.WriteLine("ERROR: OpenProcess: Process is not responding or null.");
+                failReason = "Process is not responding or null.";
                 return false;
             }
 
-
-            if (MProc.Process != null && MProc.Process.Id == pid)
-            {
-                failReason = "mProc.Process is null";
-                return true;
-            }
+            MProc.Handle = Imps.OpenProcess(0x1F0FFF, true, pid);
 
             try
             {
-                MProc.Process = Process.GetProcessById(pid);
-
-                if (MProc.Process is { Responding: false })
-                {
-                    Debug.WriteLine("ERROR: OpenProcess: Process is not responding or null.");
-                    failReason = "Process is not responding or null.";
-                    return false;
-                }
-
-                MProc.Handle = Imps.OpenProcess(0x1F0FFF, true, pid);
-
-                try
-                {
-                    Process.EnterDebugMode();
-                }
-                catch (Win32Exception)
-                {
-                    //Debug.WriteLine("WARNING: You are not running with raised privileges! Visit https://github.com/erfg12/memory.dll/wiki/Administrative-Privileges"); 
-                }
-
-                if (MProc.Handle == IntPtr.Zero)
-                {
-                    int eCode = Marshal.GetLastWin32Error();
-                    Debug.WriteLine(
-                        "ERROR: OpenProcess has failed opening a handle to the target process (GetLastWin32ErrorCode: " +
-                        eCode + ")");
-                    Process.LeaveDebugMode();
-                    MProc = null;
-                    failReason = "failed opening a handle to the target process(GetLastWin32ErrorCode: " + eCode + ")";
-                    return false;
-                }
-
-                // Lets set the process to 64bit or not here (cuts down on api calls)
-                MProc.Is64Bit = Environment.Is64BitOperatingSystem &&
-                                (IsWow64Process(MProc.Handle, out bool retVal) && !retVal);
-
-                MProc.MainModule = MProc.Process.MainModule;
-
-                //GetModules();
-
-                Debug.WriteLine("Process #" + MProc.Process + " is now open.");
-                failReason = "";
-                return true;
+                Process.EnterDebugMode();
             }
-            catch (Exception ex)
+            catch (Win32Exception)
             {
-                Debug.WriteLine("ERROR: OpenProcess has crashed. " + ex);
-                failReason = "OpenProcess has crashed. " + ex;
+                //Debug.WriteLine("WARNING: You are not running with raised privileges! Visit https://github.com/erfg12/memory.dll/wiki/Administrative-Privileges"); 
+            }
+
+            if (MProc.Handle == IntPtr.Zero)
+            {
+                int eCode = Marshal.GetLastWin32Error();
+                Debug.WriteLine(
+                    "ERROR: OpenProcess has failed opening a handle to the target process (GetLastWin32ErrorCode: " +
+                    eCode + ")");
+                Process.LeaveDebugMode();
+                MProc = null;
+                failReason = "failed opening a handle to the target process(GetLastWin32ErrorCode: " + eCode + ")";
                 return false;
             }
+
+            // Lets set the process to 64bit or not here (cuts down on api calls)
+            MProc.Is64Bit = Environment.Is64BitOperatingSystem &&
+                            (IsWow64Process(MProc.Handle, out bool retVal) && !retVal);
+
+            MProc.MainModule = MProc.Process.MainModule;
+
+            //GetModules();
+
+            Debug.WriteLine("Process #" + MProc.Process + " is now open.");
+            failReason = "";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine("ERROR: OpenProcess has crashed. " + ex);
+            failReason = "OpenProcess has crashed. " + ex;
+            return false;
+        }
+    }
+
+
+    /// <summary>
+    /// Open the PC game process with all security and access rights.
+    /// </summary>
+    /// <param name="proc">Use process name or process ID here.</param>
+    /// <param name="failReason">Show reason open process fails</param>
+    /// <returns></returns>
+    public bool OpenProcess(string proc, out string failReason)
+    {
+        return OpenProcess(GetProcIdFromName(proc), out failReason);
+    }
+
+    /// <summary>
+    /// Open the PC game process with all security and access rights.
+    /// </summary>
+    /// <param name="proc">Use process name or process ID here.</param>
+    /// <returns></returns>
+    public bool OpenProcess(string proc)
+    {
+        return OpenProcess(GetProcIdFromName(proc), out string _);
+    }
+
+    /// <summary>
+    /// Open the PC game process with all security and access rights.
+    /// </summary>
+    /// <param name="pid">Use process name or process ID here.</param>
+    /// <returns></returns>
+    public bool OpenProcess(int pid)
+    {
+        return OpenProcess(pid, out string _);
+    }
+
+    /*public bool IsAdmin()
+    {
+        try
+        {
+            using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
+            {
+                WindowsPrincipal principal = new WindowsPrincipal(identity);
+                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+            }
+        } 
+        catch
+        {
+            Debug.WriteLine("ERROR: Could not determine if program is running as admin. Is the NuGet package \"System.Security.Principal.Windows\" missing?");
+            return false;
+        }
+    }*/
+
+    /// <summary>
+    /// Builds the process modules dictionary (names with addresses). Use mProc.Process.Modules instead.
+    /// </summary>
+    /*public ConcurrentDictionary<string, IntPtr> GetModules()
+    {
+        if (mProc.Process == null)
+        {
+            Debug.WriteLine("mProc.Process is null so GetModules failed.");
+            return null;
         }
 
-
-        /// <summary>
-        /// Open the PC game process with all security and access rights.
-        /// </summary>
-        /// <param name="proc">Use process name or process ID here.</param>
-        /// <param name="failReason">Show reason open process fails</param>
-        /// <returns></returns>
-        public bool OpenProcess(string proc, out string failReason)
+        if (mProc.Is64Bit && IntPtr.Size != 8)
         {
-            return OpenProcess(GetProcIdFromName(proc), out failReason);
+            Debug.WriteLine("WARNING: Game is x64, but your Trainer is x86! You will be missing some modules, change your Trainer's Solution Platform.");
+        }
+        else if (!mProc.Is64Bit && IntPtr.Size == 8)
+        {
+            Debug.WriteLine("WARNING: Game is x86, but your Trainer is x64! You will be missing some modules, change your Trainer's Solution Platform.");
         }
 
-        /// <summary>
-        /// Open the PC game process with all security and access rights.
-        /// </summary>
-        /// <param name="proc">Use process name or process ID here.</param>
-        /// <returns></returns>
-        public bool OpenProcess(string proc)
+        if (mProc.Process.Modules == null)
         {
-            return OpenProcess(GetProcIdFromName(proc), out string _);
+            Debug.WriteLine("mProc.Process.Modules is null so GetModules failed.");
+            return null;
         }
 
-        /// <summary>
-        /// Open the PC game process with all security and access rights.
-        /// </summary>
-        /// <param name="pid">Use process name or process ID here.</param>
-        /// <returns></returns>
-        public bool OpenProcess(int pid)
+        if (mProc.Modules != null)
+            mProc.Modules.Clear();
+        else
+            mProc.Modules = new ConcurrentDictionary<string, IntPtr>();
+
+        foreach (ProcessModule Module in mProc.Process.Modules)
         {
-            return OpenProcess(pid, out string _);
+            if (Module.ModuleName == null || Module.BaseAddress == null)
+                continue;
+
+            if (!string.IsNullOrEmpty(Module.ModuleName) && !mProc.Modules.ContainsKey(Module.ModuleName))
+                mProc.Modules.TryAdd(Module.ModuleName, Module.BaseAddress);
         }
 
-        /*public bool IsAdmin()
+        Debug.WriteLine("Found " + mProc.Modules.Count() + " process modules.");
+        return mProc.Modules;
+    }*/
+    public void SetFocus()
+    {
+        //int style = GetWindowLong(procs.MainWindowHandle, -16);
+        //if ((style & 0x20000000) == 0x20000000) //minimized
+        //    SendMessage(procs.Handle, 0x0112, (IntPtr)0xF120, IntPtr.Zero);
+        SetForegroundWindow(MProc.Process.MainWindowHandle);
+    }
+
+    /// <summary>
+    /// Get the process ID number by process name.
+    /// </summary>
+    /// <param name="name">Example: "eqgame". Use task manager to find the name. Do not include .exe</param>
+    /// <returns></returns>
+    public int GetProcIdFromName(string name) //new 1.0.2 function
+    {
+        Process[] processlist = Process.GetProcesses();
+
+        if (name.ToLower().Contains(".exe"))
+            name = name.Replace(".exe", "");
+        if (name.ToLower().Contains(".bin")) // test
+            name = name.Replace(".bin", "");
+
+        foreach (Process theProcess in processlist)
         {
-            try
-            {
-                using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
-                {
-                    WindowsPrincipal principal = new WindowsPrincipal(identity);
-                    return principal.IsInRole(WindowsBuiltInRole.Administrator);
-                }
-            } 
-            catch
-            {
-                Debug.WriteLine("ERROR: Could not determine if program is running as admin. Is the NuGet package \"System.Security.Principal.Windows\" missing?");
-                return false;
-            }
-        }*/
+            if (theProcess.ProcessName.Equals(name,
+                    StringComparison
+                        .CurrentCultureIgnoreCase)) //find (name).exe in the process list (use task manager to find the name)
+                return theProcess.Id;
+        }
 
-        /// <summary>
-        /// Builds the process modules dictionary (names with addresses). Use mProc.Process.Modules instead.
-        /// </summary>
-        /*public ConcurrentDictionary<string, IntPtr> GetModules()
+        return 0; //if we fail to find it
+    }
+
+
+    /// <summary>
+    /// Get code. If just the ini file name is given with no path, it will assume the file is next to the executable.
+    /// </summary>
+    /// <param name="name">label for address or code</param>
+    /// <param name="iniFile">path and name of ini file</param>
+    /// <returns></returns>
+    public string LoadCode(string name, string iniFile)
+    {
+        StringBuilder returnCode = new(1024);
+
+        if (!string.IsNullOrEmpty(iniFile))
         {
-            if (mProc.Process == null)
+            if (File.Exists(iniFile))
             {
-                Debug.WriteLine("mProc.Process is null so GetModules failed.");
-                return null;
+                _ = GetPrivateProfileString("codes", name, "", returnCode, (uint)returnCode.Capacity, iniFile);
+                //Debug.WriteLine("read_ini_result=" + read_ini_result); number of characters returned
             }
-
-            if (mProc.Is64Bit && IntPtr.Size != 8)
-            {
-                Debug.WriteLine("WARNING: Game is x64, but your Trainer is x86! You will be missing some modules, change your Trainer's Solution Platform.");
-            }
-            else if (!mProc.Is64Bit && IntPtr.Size == 8)
-            {
-                Debug.WriteLine("WARNING: Game is x86, but your Trainer is x64! You will be missing some modules, change your Trainer's Solution Platform.");
-            }
-
-            if (mProc.Process.Modules == null)
-            {
-                Debug.WriteLine("mProc.Process.Modules is null so GetModules failed.");
-                return null;
-            }
-
-            if (mProc.Modules != null)
-                mProc.Modules.Clear();
             else
-                mProc.Modules = new ConcurrentDictionary<string, IntPtr>();
-
-            foreach (ProcessModule Module in mProc.Process.Modules)
-            {
-                if (Module.ModuleName == null || Module.BaseAddress == null)
-                    continue;
-
-                if (!string.IsNullOrEmpty(Module.ModuleName) && !mProc.Modules.ContainsKey(Module.ModuleName))
-                    mProc.Modules.TryAdd(Module.ModuleName, Module.BaseAddress);
-            }
-
-            Debug.WriteLine("Found " + mProc.Modules.Count() + " process modules.");
-            return mProc.Modules;
-        }*/
-        public void SetFocus()
-        {
-            //int style = GetWindowLong(procs.MainWindowHandle, -16);
-            //if ((style & 0x20000000) == 0x20000000) //minimized
-            //    SendMessage(procs.Handle, 0x0112, (IntPtr)0xF120, IntPtr.Zero);
-            SetForegroundWindow(MProc.Process.MainWindowHandle);
+                Debug.WriteLine("ERROR: ini file \"" + iniFile + "\" not found!");
         }
+        else
+            returnCode.Append(name);
 
-        /// <summary>
-        /// Get the process ID number by process name.
-        /// </summary>
-        /// <param name="name">Example: "eqgame". Use task manager to find the name. Do not include .exe</param>
-        /// <returns></returns>
-        public int GetProcIdFromName(string name) //new 1.0.2 function
+        return returnCode.ToString();
+    }
+
+    private int LoadIntCode(string name, string path)
+    {
+        try
         {
-            Process[] processlist = Process.GetProcesses();
-
-            if (name.ToLower().Contains(".exe"))
-                name = name.Replace(".exe", "");
-            if (name.ToLower().Contains(".bin")) // test
-                name = name.Replace(".bin", "");
-
-            foreach (Process theProcess in processlist)
-            {
-                if (theProcess.ProcessName.Equals(name,
-                        StringComparison
-                            .CurrentCultureIgnoreCase)) //find (name).exe in the process list (use task manager to find the name)
-                    return theProcess.Id;
-            }
-
-            return 0; //if we fail to find it
+            int intValue = Convert.ToInt32(LoadCode(name, path), 16);
+            return intValue >= 0 ? intValue : 0;
         }
-
-
-        /// <summary>
-        /// Get code. If just the ini file name is given with no path, it will assume the file is next to the executable.
-        /// </summary>
-        /// <param name="name">label for address or code</param>
-        /// <param name="iniFile">path and name of ini file</param>
-        /// <returns></returns>
-        public string LoadCode(string name, string iniFile)
+        catch
         {
-            StringBuilder returnCode = new(1024);
-
-            if (!string.IsNullOrEmpty(iniFile))
-            {
-                if (File.Exists(iniFile))
-                {
-                    _ = GetPrivateProfileString("codes", name, "", returnCode, (uint)returnCode.Capacity, iniFile);
-                    //Debug.WriteLine("read_ini_result=" + read_ini_result); number of characters returned
-                }
-                else
-                    Debug.WriteLine("ERROR: ini file \"" + iniFile + "\" not found!");
-            }
-            else
-                returnCode.Append(name);
-
-            return returnCode.ToString();
+            Debug.WriteLine("ERROR: LoadIntCode function crashed!");
+            return 0;
         }
+    }
 
-        private int LoadIntCode(string name, string path)
+    /// <summary>
+    /// Make a named pipe (if not already made) and call to a remote function.
+    /// </summary>
+    /// <param name="func">remote function to call</param>
+    /// <param name="name">name of the thread</param>
+    public void ThreadStartClient(string func, string name)
+    {
+        //ManualResetEvent SyncClientServer = (ManualResetEvent)obj;
+        using NamedPipeClientStream pipeStream = new NamedPipeClientStream(name);
+        if (!pipeStream.IsConnected)
+            pipeStream.Connect();
+
+        //MessageBox.Show("[Client] Pipe connection established");
+        using StreamWriter sw = new StreamWriter(pipeStream);
+        if (!sw.AutoFlush)
+            sw.AutoFlush = true;
+        sw.WriteLine(func);
+    }
+
+    #region protection
+
+    public bool ChangeProtection(string code, MemoryProtection newProtection, out MemoryProtection oldProtection,
+        string file = "")
+    {
+        UIntPtr theCode = Get64BitCode(code, file);
+        if (theCode == UIntPtr.Zero
+            || MProc.Handle == IntPtr.Zero)
         {
-            try
-            {
-                int intValue = Convert.ToInt32(LoadCode(name, path), 16);
-                return intValue >= 0 ? intValue : 0;
-            }
-            catch
-            {
-                Debug.WriteLine("ERROR: LoadIntCode function crashed!");
-                return 0;
-            }
-        }
-
-        /// <summary>
-        /// Make a named pipe (if not already made) and call to a remote function.
-        /// </summary>
-        /// <param name="func">remote function to call</param>
-        /// <param name="name">name of the thread</param>
-        public void ThreadStartClient(string func, string name)
-        {
-            //ManualResetEvent SyncClientServer = (ManualResetEvent)obj;
-            using NamedPipeClientStream pipeStream = new NamedPipeClientStream(name);
-            if (!pipeStream.IsConnected)
-                pipeStream.Connect();
-
-            //MessageBox.Show("[Client] Pipe connection established");
-            using StreamWriter sw = new StreamWriter(pipeStream);
-            if (!sw.AutoFlush)
-                sw.AutoFlush = true;
-            sw.WriteLine(func);
-        }
-
-        #region protection
-
-        public bool ChangeProtection(string code, MemoryProtection newProtection, out MemoryProtection oldProtection,
-            string file = "")
-        {
-            UIntPtr theCode = Get64BitCode(code, file);
-            if (theCode == UIntPtr.Zero
-                || MProc.Handle == IntPtr.Zero)
-            {
-                oldProtection = default;
-                return false;
-            }
-
-            return VirtualProtectEx(MProc.Handle, theCode, (IntPtr)(MProc.Is64Bit ? 8 : 4), newProtection,
-                out oldProtection);
-        }
-
-        public bool ChangeProtection(UIntPtr address, string code, MemoryProtection newProtection,
-            out MemoryProtection oldProtection, string file = "")
-        {
-            UIntPtr addy = code != ""
-                ? Get64BitCode(address.ToString("X") + code, file)
-                : address;
-            if (addy != UIntPtr.Zero
-                && MProc.Handle != IntPtr.Zero)
-                return VirtualProtectEx(MProc.Handle, addy,
-                    (IntPtr)(MProc.Is64Bit ? 8 : 4), newProtection, out oldProtection);
             oldProtection = default;
             return false;
         }
 
-        #endregion
+        return VirtualProtectEx(MProc.Handle, theCode, (IntPtr)(MProc.Is64Bit ? 8 : 4), newProtection,
+            out oldProtection);
+    }
 
-        /// <summary>
-        /// Convert code from string to real address. If path is not blank, will pull from ini file.
-        /// </summary>
-        /// <param name="name">label in ini file or code</param>
-        /// <param name="path">path to ini file (OPTIONAL)</param>
-        /// <param name="size">size of address (default is 8)</param>
-        /// <returns></returns>
-        public UIntPtr GetCode(string name, string path = "", int size = 8)
+    public bool ChangeProtection(UIntPtr address, string code, MemoryProtection newProtection,
+        out MemoryProtection oldProtection, string file = "")
+    {
+        UIntPtr addy = code != ""
+            ? Get64BitCode(address.ToString("X") + code, file)
+            : address;
+        if (addy != UIntPtr.Zero
+            && MProc.Handle != IntPtr.Zero)
+            return VirtualProtectEx(MProc.Handle, addy,
+                (IntPtr)(MProc.Is64Bit ? 8 : 4), newProtection, out oldProtection);
+        oldProtection = default;
+        return false;
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Convert code from string to real address. If path is not blank, will pull from ini file.
+    /// </summary>
+    /// <param name="name">label in ini file or code</param>
+    /// <param name="path">path to ini file (OPTIONAL)</param>
+    /// <param name="size">size of address (default is 8)</param>
+    /// <returns></returns>
+    public UIntPtr GetCode(string name, string path = "", int size = 8)
+    {
+        if (MProc == null)
+            return UIntPtr.Zero;
+
+        if (MProc.Is64Bit)
         {
-            if (MProc == null)
+            //Debug.WriteLine("Changing to 64bit code...");
+            if (size == 8) size = 16; //change to 64bit
+            return Get64BitCode(name, path, size); //jump over to 64bit code grab
+        }
+
+        string theCode = !string.IsNullOrEmpty(path) ? LoadCode(name, path) : name;
+
+        if (string.IsNullOrEmpty(theCode))
+        {
+            //Debug.WriteLine("ERROR: LoadCode returned blank. NAME:" + name + " PATH:" + path);
+            return UIntPtr.Zero;
+        }
+
+        //Debug.WriteLine("Found code=" + theCode + " NAME:" + name + " PATH:" + path);
+        // remove spaces
+        if (theCode.Contains(' '))
+            theCode = theCode.Replace(" ", String.Empty);
+
+        if (!theCode.Contains('+') && !theCode.Contains(','))
+        {
+            try
+            {
+                return new UIntPtr(Convert.ToUInt32(theCode, 16));
+            }
+            catch
+            {
+                Console.WriteLine("Error in GetCode(). Failed to read address " + theCode);
                 return UIntPtr.Zero;
-
-            if (MProc.Is64Bit)
-            {
-                //Debug.WriteLine("Changing to 64bit code...");
-                if (size == 8) size = 16; //change to 64bit
-                return Get64BitCode(name, path, size); //jump over to 64bit code grab
             }
+        }
 
-            string theCode = !string.IsNullOrEmpty(path) ? LoadCode(name, path) : name;
+        string newOffsets = theCode;
 
-            if (string.IsNullOrEmpty(theCode))
+        if (theCode.Contains('+'))
+            newOffsets = theCode.Substring(theCode.IndexOf('+') + 1);
+
+        byte[] memoryAddress = new byte[size];
+
+        if (newOffsets.Contains(','))
+        {
+            List<int> offsetsList = new List<int>();
+
+            string[] newerOffsets = newOffsets.Split(',');
+            foreach (string oldOffsets in newerOffsets)
             {
-                //Debug.WriteLine("ERROR: LoadCode returned blank. NAME:" + name + " PATH:" + path);
-                return UIntPtr.Zero;
-            }
-
-            //Debug.WriteLine("Found code=" + theCode + " NAME:" + name + " PATH:" + path);
-            // remove spaces
-            if (theCode.Contains(' '))
-                theCode = theCode.Replace(" ", String.Empty);
-
-            if (!theCode.Contains('+') && !theCode.Contains(','))
-            {
-                try
-                {
-                    return new UIntPtr(Convert.ToUInt32(theCode, 16));
-                }
-                catch
-                {
-                    Console.WriteLine("Error in GetCode(). Failed to read address " + theCode);
-                    return UIntPtr.Zero;
-                }
-            }
-
-            string newOffsets = theCode;
-
-            if (theCode.Contains('+'))
-                newOffsets = theCode.Substring(theCode.IndexOf('+') + 1);
-
-            byte[] memoryAddress = new byte[size];
-
-            if (newOffsets.Contains(','))
-            {
-                List<int> offsetsList = new List<int>();
-
-                string[] newerOffsets = newOffsets.Split(',');
-                foreach (string oldOffsets in newerOffsets)
-                {
-                    string test = oldOffsets;
-                    if (oldOffsets.Contains("0x")) test = oldOffsets.Replace("0x", "");
-                    int preParse;
-                    if (!oldOffsets.Contains('-'))
-                        preParse = int.Parse(test, NumberStyles.AllowHexSpecifier);
-                    else
-                    {
-                        test = test.Replace("-", "");
-                        preParse = int.Parse(test, NumberStyles.AllowHexSpecifier);
-                        preParse = preParse * -1;
-                    }
-
-                    offsetsList.Add(preParse);
-                }
-
-                int[] offsets = offsetsList.ToArray();
-
-                if (theCode.Contains("base") || theCode.Contains("main"))
-                    ReadProcessMemory(MProc.Handle, (UIntPtr)((int)MProc.MainModule.BaseAddress + offsets[0]),
-                        memoryAddress, (UIntPtr)size, IntPtr.Zero);
-                else if (!theCode.Contains("base") && !theCode.Contains("main") && theCode.Contains('+'))
-                {
-                    string[] moduleName = theCode.Split('+');
-                    IntPtr altModule = IntPtr.Zero;
-                    if (!moduleName[0].ToLower().Contains(".dll") && !moduleName[0].ToLower().Contains(".exe") &&
-                        !moduleName[0].ToLower().Contains(".bin"))
-                    {
-                        string theAddr = moduleName[0];
-                        if (theAddr.Contains("0x")) theAddr = theAddr.Replace("0x", "");
-                        altModule = (IntPtr)int.Parse(theAddr, NumberStyles.HexNumber);
-                    }
-                    else
-                    {
-                        try
-                        {
-                            altModule = GetModuleAddressByName(moduleName[0]);
-                        }
-                        catch
-                        {
-                            Debug.WriteLine("Module " + moduleName[0] + " was not found in module list!");
-                            //Debug.WriteLine("Modules: " + string.Join(",", mProc.Modules));
-                        }
-                    }
-
-                    ReadProcessMemory(MProc.Handle, (UIntPtr)((int)altModule + offsets[0]), memoryAddress,
-                        (UIntPtr)size, IntPtr.Zero);
-                }
+                string test = oldOffsets;
+                if (oldOffsets.Contains("0x")) test = oldOffsets.Replace("0x", "");
+                int preParse;
+                if (!oldOffsets.Contains('-'))
+                    preParse = int.Parse(test, NumberStyles.AllowHexSpecifier);
                 else
-                    ReadProcessMemory(MProc.Handle, (UIntPtr)(offsets[0]), memoryAddress, (UIntPtr)size, IntPtr.Zero);
-
-                uint num1 = BitConverter.ToUInt32(memoryAddress, 0); //ToUInt64 causes arithmetic overflow.
-
-                UIntPtr base1 = (UIntPtr)0;
-
-                for (int i = 1; i < offsets.Length; i++)
                 {
-                    base1 = new UIntPtr(Convert.ToUInt32(num1 + offsets[i]));
-                    ReadProcessMemory(MProc.Handle, base1, memoryAddress, (UIntPtr)size, IntPtr.Zero);
-                    num1 = BitConverter.ToUInt32(memoryAddress, 0); //ToUInt64 causes arithmetic overflow.
+                    test = test.Replace("-", "");
+                    preParse = int.Parse(test, NumberStyles.AllowHexSpecifier);
+                    preParse = preParse * -1;
                 }
 
-                return base1;
+                offsetsList.Add(preParse);
             }
-            else // no offsets
+
+            int[] offsets = offsetsList.ToArray();
+
+            if (theCode.Contains("base") || theCode.Contains("main"))
+                ReadProcessMemory(MProc.Handle, (UIntPtr)((int)MProc.MainModule.BaseAddress + offsets[0]),
+                    memoryAddress, (UIntPtr)size, IntPtr.Zero);
+            else if (!theCode.Contains("base") && !theCode.Contains("main") && theCode.Contains('+'))
             {
-                int trueCode = Convert.ToInt32(newOffsets, 16);
+                string[] moduleName = theCode.Split('+');
                 IntPtr altModule = IntPtr.Zero;
-                //Debug.WriteLine("newOffsets=" + newOffsets);
-                if (theCode.ToLower().Contains("base") || theCode.ToLower().Contains("main"))
-                    altModule = MProc.MainModule.BaseAddress;
-                else if (!theCode.ToLower().Contains("base") && !theCode.ToLower().Contains("main") &&
-                         theCode.Contains("+"))
+                if (!moduleName[0].ToLower().Contains(".dll") && !moduleName[0].ToLower().Contains(".exe") &&
+                    !moduleName[0].ToLower().Contains(".bin"))
                 {
-                    string[] moduleName = theCode.Split('+');
-                    if (!moduleName[0].ToLower().Contains(".dll") && !moduleName[0].ToLower().Contains(".exe") &&
-                        !moduleName[0].ToLower().Contains(".bin"))
-                    {
-                        string theAddr = moduleName[0];
-                        if (theAddr.Contains("0x")) theAddr = theAddr.Replace("0x", "");
-                        altModule = (IntPtr)int.Parse(theAddr, NumberStyles.HexNumber);
-                    }
-                    else
-                    {
-                        try
-                        {
-                            altModule = GetModuleAddressByName(moduleName[0]);
-                        }
-                        catch
-                        {
-                            Debug.WriteLine("Module " + moduleName[0] + " was not found in module list!");
-                            //Debug.WriteLine("Modules: " + string.Join(",", mProc.Modules));
-                        }
-                    }
+                    string theAddr = moduleName[0];
+                    if (theAddr.Contains("0x")) theAddr = theAddr.Replace("0x", "");
+                    altModule = (IntPtr)int.Parse(theAddr, NumberStyles.HexNumber);
                 }
                 else
-                    altModule = GetModuleAddressByName(theCode.Split('+')[0]);
-
-                return (UIntPtr)((int)altModule + trueCode);
-            }
-        }
-
-        /// <summary>
-        /// Retrieve mProc.Process module base address by name
-        /// </summary>
-        /// <param name="name">name of module</param>
-        /// <returns></returns>
-        public IntPtr GetModuleAddressByName(string name)
-        {
-            return MProc.Process.Modules.Cast<ProcessModule>().SingleOrDefault(m =>
-                string.Equals(m.ModuleName, name, StringComparison.OrdinalIgnoreCase))!.BaseAddress;
-        }
-
-        /// <summary>
-        /// Convert code from string to real address. If path is not blank, will pull from ini file.
-        /// </summary>
-        /// <param name="name">label in ini file OR code</param>
-        /// <param name="path">path to ini file (OPTIONAL)</param>
-        /// <param name="size">size of address (default is 16)</param>
-        /// <returns></returns>
-        public UIntPtr Get64BitCode(string name, string path = "", int size = 16)
-        {
-            string theCode = !string.IsNullOrEmpty(path) ? LoadCode(name, path) : name;
-
-            if (string.IsNullOrEmpty(theCode))
-                return UIntPtr.Zero;
-
-            // remove spaces
-            if (theCode.Contains(' '))
-                theCode = theCode.Replace(" ", string.Empty);
-
-            string newOffsets = theCode;
-            if (theCode.Contains('+'))
-                newOffsets = theCode[(theCode.IndexOf('+') + 1)..];
-
-            byte[] memoryAddress = new byte[size];
-
-            if (!theCode.Contains('+') && !theCode.Contains(','))
-            {
-                try
                 {
-                    return new(Convert.ToUInt64(theCode, 16));
-                }
-                catch
-                {
-                    Console.WriteLine("Error in GetCode(). Failed to read address " + theCode);
-                    return UIntPtr.Zero;
-                }
-            }
-
-            if (newOffsets.Contains(','))
-            {
-                List<long> offsetsList = new List<long>();
-
-                string[] newerOffsets = newOffsets.Split(',');
-                foreach (string oldOffsets in newerOffsets)
-                {
-                    string test = oldOffsets;
-                    if (oldOffsets.Contains("0x")) test = oldOffsets.Replace("0x", "");
-                    long preParse;
-                    if (!oldOffsets.Contains("-"))
-                        preParse = long.Parse(test, NumberStyles.AllowHexSpecifier);
-                    else
+                    try
                     {
-                        test = test.Replace("-", "");
-                        preParse = long.Parse(test, NumberStyles.AllowHexSpecifier);
-                        preParse = preParse * -1;
+                        altModule = GetModuleAddressByName(moduleName[0]);
                     }
-
-                    offsetsList.Add(preParse);
-                }
-
-                long[] offsets = offsetsList.ToArray();
-
-                if (theCode.Contains("base") || theCode.Contains("main"))
-                    ReadProcessMemory(MProc.Handle, (UIntPtr)((Int64)MProc.MainModule.BaseAddress + offsets[0]),
-                        memoryAddress, (UIntPtr)size, IntPtr.Zero);
-                else if (!theCode.Contains("base") && !theCode.Contains("main") && theCode.Contains('+'))
-                {
-                    string[] moduleName = theCode.Split('+');
-                    IntPtr altModule = IntPtr.Zero;
-                    if (!moduleName[0].ToLower().Contains(".dll") && !moduleName[0].ToLower().Contains(".exe") &&
-                        !moduleName[0].ToLower().Contains(".bin"))
-                        altModule = (IntPtr)long.Parse(moduleName[0], NumberStyles.HexNumber);
-                    else
+                    catch
                     {
-                        try
-                        {
-                            altModule = GetModuleAddressByName(moduleName[0]);
-                        }
-                        catch
-                        {
-                            Debug.WriteLine("Module " + moduleName[0] + " was not found in module list!");
-                            //Debug.WriteLine("Modules: " + string.Join(",", mProc.Modules));
-                        }
+                        Debug.WriteLine("Module " + moduleName[0] + " was not found in module list!");
+                        //Debug.WriteLine("Modules: " + string.Join(",", mProc.Modules));
                     }
-
-                    ReadProcessMemory(MProc.Handle, (UIntPtr)((long)altModule + offsets[0]), memoryAddress,
-                        (UIntPtr)size, IntPtr.Zero);
-                }
-                else // no offsets
-                    ReadProcessMemory(MProc.Handle, (UIntPtr)(offsets[0]), memoryAddress, (UIntPtr)size, IntPtr.Zero);
-
-                long num1 = BitConverter.ToInt64(memoryAddress, 0);
-
-                UIntPtr base1 = UIntPtr.Zero;
-
-                for (int i = 1; i < offsets.Length; i++)
-                {
-                    base1 = new UIntPtr(Convert.ToUInt64(num1 + offsets[i]));
-                    ReadProcessMemory(MProc.Handle, base1, memoryAddress, (UIntPtr)size, IntPtr.Zero);
-                    num1 = BitConverter.ToInt64(memoryAddress, 0);
                 }
 
-                return base1;
+                ReadProcessMemory(MProc.Handle, (UIntPtr)((int)altModule + offsets[0]), memoryAddress,
+                    (UIntPtr)size, IntPtr.Zero);
             }
             else
+                ReadProcessMemory(MProc.Handle, (UIntPtr)(offsets[0]), memoryAddress, (UIntPtr)size, IntPtr.Zero);
+
+            uint num1 = BitConverter.ToUInt32(memoryAddress, 0); //ToUInt64 causes arithmetic overflow.
+
+            UIntPtr base1 = (UIntPtr)0;
+
+            for (int i = 1; i < offsets.Length; i++)
             {
-                long trueCode = Convert.ToInt64(newOffsets, 16);
-                IntPtr altModule = IntPtr.Zero;
-                if (theCode.Contains("base") || theCode.Contains("main"))
-                    altModule = MProc.MainModule.BaseAddress;
-                else if (!theCode.Contains("base") && !theCode.Contains("main") && theCode.Contains("+"))
+                base1 = new UIntPtr(Convert.ToUInt32(num1 + offsets[i]));
+                ReadProcessMemory(MProc.Handle, base1, memoryAddress, (UIntPtr)size, IntPtr.Zero);
+                num1 = BitConverter.ToUInt32(memoryAddress, 0); //ToUInt64 causes arithmetic overflow.
+            }
+
+            return base1;
+        }
+        else // no offsets
+        {
+            int trueCode = Convert.ToInt32(newOffsets, 16);
+            IntPtr altModule = IntPtr.Zero;
+            //Debug.WriteLine("newOffsets=" + newOffsets);
+            if (theCode.ToLower().Contains("base") || theCode.ToLower().Contains("main"))
+                altModule = MProc.MainModule.BaseAddress;
+            else if (!theCode.ToLower().Contains("base") && !theCode.ToLower().Contains("main") &&
+                     theCode.Contains("+"))
+            {
+                string[] moduleName = theCode.Split('+');
+                if (!moduleName[0].ToLower().Contains(".dll") && !moduleName[0].ToLower().Contains(".exe") &&
+                    !moduleName[0].ToLower().Contains(".bin"))
                 {
-                    string[] moduleName = theCode.Split('+');
-                    if (!moduleName[0].ToLower().Contains(".dll") && !moduleName[0].ToLower().Contains(".exe") &&
-                        !moduleName[0].ToLower().Contains(".bin"))
-                    {
-                        string theAddr = moduleName[0];
-                        if (theAddr.Contains("0x")) theAddr = theAddr.Replace("0x", "");
-                        altModule = (IntPtr)long.Parse(theAddr, NumberStyles.HexNumber);
-                    }
-                    else
-                    {
-                        try
-                        {
-                            altModule = GetModuleAddressByName(moduleName[0]);
-                        }
-                        catch
-                        {
-                            Debug.WriteLine("Module " + moduleName[0] + " was not found in module list!");
-                            //Debug.WriteLine("Modules: " + string.Join(",", mProc.Modules));
-                        }
-                    }
+                    string theAddr = moduleName[0];
+                    if (theAddr.Contains("0x")) theAddr = theAddr.Replace("0x", "");
+                    altModule = (IntPtr)int.Parse(theAddr, NumberStyles.HexNumber);
                 }
                 else
-                    altModule = GetModuleAddressByName(theCode.Split('+')[0]);
+                {
+                    try
+                    {
+                        altModule = GetModuleAddressByName(moduleName[0]);
+                    }
+                    catch
+                    {
+                        Debug.WriteLine("Module " + moduleName[0] + " was not found in module list!");
+                        //Debug.WriteLine("Modules: " + string.Join(",", mProc.Modules));
+                    }
+                }
+            }
+            else
+                altModule = GetModuleAddressByName(theCode.Split('+')[0]);
 
-                return (UIntPtr)((long)altModule + trueCode);
+            return (UIntPtr)((int)altModule + trueCode);
+        }
+    }
+
+    /// <summary>
+    /// Retrieve mProc.Process module base address by name
+    /// </summary>
+    /// <param name="name">name of module</param>
+    /// <returns></returns>
+    public IntPtr GetModuleAddressByName(string name)
+    {
+        return MProc.Process.Modules.Cast<ProcessModule>().SingleOrDefault(m =>
+            string.Equals(m.ModuleName, name, StringComparison.OrdinalIgnoreCase))!.BaseAddress;
+    }
+
+    /// <summary>
+    /// Convert code from string to real address. If path is not blank, will pull from ini file.
+    /// </summary>
+    /// <param name="name">label in ini file OR code</param>
+    /// <param name="path">path to ini file (OPTIONAL)</param>
+    /// <param name="size">size of address (default is 16)</param>
+    /// <returns></returns>
+    public UIntPtr Get64BitCode(string name, string path = "", int size = 16)
+    {
+        string theCode = !string.IsNullOrEmpty(path) ? LoadCode(name, path) : name;
+
+        if (string.IsNullOrEmpty(theCode))
+            return UIntPtr.Zero;
+
+        // remove spaces
+        if (theCode.Contains(' '))
+            theCode = theCode.Replace(" ", string.Empty);
+
+        string newOffsets = theCode;
+        if (theCode.Contains('+'))
+            newOffsets = theCode[(theCode.IndexOf('+') + 1)..];
+
+        byte[] memoryAddress = new byte[size];
+
+        if (!theCode.Contains('+') && !theCode.Contains(','))
+        {
+            try
+            {
+                return new(Convert.ToUInt64(theCode, 16));
+            }
+            catch
+            {
+                Console.WriteLine("Error in GetCode(). Failed to read address " + theCode);
+                return UIntPtr.Zero;
             }
         }
 
-        /// <summary>
-        /// Close the process when finished.
-        /// </summary>
-        public void CloseProcess()
+        if (newOffsets.Contains(','))
         {
-            CloseHandle(MProc.Handle);
-            MProc = null;
+            List<long> offsetsList = new List<long>();
+
+            string[] newerOffsets = newOffsets.Split(',');
+            foreach (string oldOffsets in newerOffsets)
+            {
+                string test = oldOffsets;
+                if (oldOffsets.Contains("0x")) test = oldOffsets.Replace("0x", "");
+                long preParse;
+                if (!oldOffsets.Contains("-"))
+                    preParse = long.Parse(test, NumberStyles.AllowHexSpecifier);
+                else
+                {
+                    test = test.Replace("-", "");
+                    preParse = long.Parse(test, NumberStyles.AllowHexSpecifier);
+                    preParse = preParse * -1;
+                }
+
+                offsetsList.Add(preParse);
+            }
+
+            long[] offsets = offsetsList.ToArray();
+
+            if (theCode.Contains("base") || theCode.Contains("main"))
+                ReadProcessMemory(MProc.Handle, (UIntPtr)((Int64)MProc.MainModule.BaseAddress + offsets[0]),
+                    memoryAddress, (UIntPtr)size, IntPtr.Zero);
+            else if (!theCode.Contains("base") && !theCode.Contains("main") && theCode.Contains('+'))
+            {
+                string[] moduleName = theCode.Split('+');
+                IntPtr altModule = IntPtr.Zero;
+                if (!moduleName[0].ToLower().Contains(".dll") && !moduleName[0].ToLower().Contains(".exe") &&
+                    !moduleName[0].ToLower().Contains(".bin"))
+                    altModule = (IntPtr)long.Parse(moduleName[0], NumberStyles.HexNumber);
+                else
+                {
+                    try
+                    {
+                        altModule = GetModuleAddressByName(moduleName[0]);
+                    }
+                    catch
+                    {
+                        Debug.WriteLine("Module " + moduleName[0] + " was not found in module list!");
+                        //Debug.WriteLine("Modules: " + string.Join(",", mProc.Modules));
+                    }
+                }
+
+                ReadProcessMemory(MProc.Handle, (UIntPtr)((long)altModule + offsets[0]), memoryAddress,
+                    (UIntPtr)size, IntPtr.Zero);
+            }
+            else // no offsets
+                ReadProcessMemory(MProc.Handle, (UIntPtr)(offsets[0]), memoryAddress, (UIntPtr)size, IntPtr.Zero);
+
+            long num1 = BitConverter.ToInt64(memoryAddress, 0);
+
+            UIntPtr base1 = UIntPtr.Zero;
+
+            for (int i = 1; i < offsets.Length; i++)
+            {
+                base1 = new UIntPtr(Convert.ToUInt64(num1 + offsets[i]));
+                ReadProcessMemory(MProc.Handle, base1, memoryAddress, (UIntPtr)size, IntPtr.Zero);
+                num1 = BitConverter.ToInt64(memoryAddress, 0);
+            }
+
+            return base1;
+        }
+        else
+        {
+            long trueCode = Convert.ToInt64(newOffsets, 16);
+            IntPtr altModule = IntPtr.Zero;
+            if (theCode.Contains("base") || theCode.Contains("main"))
+                altModule = MProc.MainModule.BaseAddress;
+            else if (!theCode.Contains("base") && !theCode.Contains("main") && theCode.Contains("+"))
+            {
+                string[] moduleName = theCode.Split('+');
+                if (!moduleName[0].ToLower().Contains(".dll") && !moduleName[0].ToLower().Contains(".exe") &&
+                    !moduleName[0].ToLower().Contains(".bin"))
+                {
+                    string theAddr = moduleName[0];
+                    if (theAddr.Contains("0x")) theAddr = theAddr.Replace("0x", "");
+                    altModule = (IntPtr)long.Parse(theAddr, NumberStyles.HexNumber);
+                }
+                else
+                {
+                    try
+                    {
+                        altModule = GetModuleAddressByName(moduleName[0]);
+                    }
+                    catch
+                    {
+                        Debug.WriteLine("Module " + moduleName[0] + " was not found in module list!");
+                        //Debug.WriteLine("Modules: " + string.Join(",", mProc.Modules));
+                    }
+                }
+            }
+            else
+                altModule = GetModuleAddressByName(theCode.Split('+')[0]);
+
+            return (UIntPtr)((long)altModule + trueCode);
+        }
+    }
+
+    /// <summary>
+    /// Close the process when finished.
+    /// </summary>
+    public void CloseProcess()
+    {
+        CloseHandle(MProc.Handle);
+        MProc = null;
+    }
+
+    /// <summary>
+    /// Inject a DLL file.
+    /// </summary>
+    /// <param name="strDllName">path and name of DLL file. Ex: "C:\MyTrainer\inject.dll" or "inject.dll" if the DLL file is in the same directory as the trainer.</param>
+    public bool InjectDll(string strDllName)
+    {
+        if (MProc.Process == null)
+        {
+            // check if process is open first
+            Debug.WriteLine("Inject failed due to mProc.Process being null. Is the process not open?");
+            return false;
         }
 
-        /// <summary>
-        /// Inject a DLL file.
-        /// </summary>
-        /// <param name="strDllName">path and name of DLL file. Ex: "C:\MyTrainer\inject.dll" or "inject.dll" if the DLL file is in the same directory as the trainer.</param>
-        public bool InjectDll(string strDllName)
+        foreach (ProcessModule pm in MProc.Process.Modules)
         {
-            if (MProc.Process == null)
-            {
-                // check if process is open first
-                Debug.WriteLine("Inject failed due to mProc.Process being null. Is the process not open?");
+            if (pm.ModuleName != null &&
+                pm.ModuleName.StartsWith("inject", StringComparison.InvariantCultureIgnoreCase))
                 return false;
-            }
+        }
 
-            foreach (ProcessModule pm in MProc.Process.Modules)
-            {
-                if (pm.ModuleName != null &&
-                    pm.ModuleName.StartsWith("inject", StringComparison.InvariantCultureIgnoreCase))
-                    return false;
-            }
+        if (!MProc.Process.Responding)
+            return false;
 
-            if (!MProc.Process.Responding)
-                return false;
+        int lenWrite = strDllName.Length + 1;
+        UIntPtr allocMem = VirtualAllocEx(MProc.Handle, (UIntPtr)null, (uint)lenWrite, MemCommit | MemReserve,
+            Readwrite);
 
-            int lenWrite = strDllName.Length + 1;
-            UIntPtr allocMem = VirtualAllocEx(MProc.Handle, (UIntPtr)null, (uint)lenWrite, MemCommit | MemReserve,
-                Readwrite);
+        WriteProcessMemory(MProc.Handle, allocMem, strDllName, (UIntPtr)lenWrite, out IntPtr _);
+        UIntPtr gameProc = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
 
-            WriteProcessMemory(MProc.Handle, allocMem, strDllName, (UIntPtr)lenWrite, out IntPtr _);
-            UIntPtr gameProc = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
+        IntPtr hThread = CreateRemoteThread(MProc.Handle, (IntPtr)null, 0, gameProc, allocMem, 0, out IntPtr _);
 
-            IntPtr hThread = CreateRemoteThread(MProc.Handle, (IntPtr)null, 0, gameProc, allocMem, 0, out IntPtr _);
-
-            int result = WaitForSingleObject(hThread, 10 * 1000);
-            if (result == 0x00000080L || result == 0x00000102L)
-            {
-                _ = CloseHandle(hThread);
-                return false;
-            }
-
-            VirtualFreeEx(MProc.Handle, allocMem, (UIntPtr)0, 0x8000);
-
+        int result = WaitForSingleObject(hThread, 10 * 1000);
+        if (result == 0x00000080L || result == 0x00000102L)
+        {
             _ = CloseHandle(hThread);
-
-            return true;
+            return false;
         }
+
+        VirtualFreeEx(MProc.Handle, allocMem, (UIntPtr)0, 0x8000);
+
+        _ = CloseHandle(hThread);
+
+        return true;
+    }
 
 #if WINXP
 #else
-        /// <summary>
-        /// Creates a code cave to write custom opcodes in target process
-        /// </summary>
-        /// <param name="code">Address to create the trampoline</param>
-        /// <param name="newBytes">The opcodes to write in the code cave</param>
-        /// <param name="replaceCount">The number of bytes being replaced</param>
-        /// <param name="size">size of the allocated region</param>
-        /// <param name="file">ini file to look in</param>
-        /// <remarks>Please ensure that you use the proper replaceCount
-        /// if you replace halfway in an instruction you may cause bad things</remarks>
-        /// <returns>UIntPtr to created code cave for use for later deallocation</returns>
-        public UIntPtr CreateTrampoline(string code, byte[] newBytes, int replaceCount, int size = 0x1000,
-            bool makeTrampoline = true, string file = "")
+    /// <summary>
+    /// Creates a code cave to write custom opcodes in target process
+    /// </summary>
+    /// <param name="code">Address to create the trampoline</param>
+    /// <param name="newBytes">The opcodes to write in the code cave</param>
+    /// <param name="replaceCount">The number of bytes being replaced</param>
+    /// <param name="size">size of the allocated region</param>
+    /// <param name="file">ini file to look in</param>
+    /// <remarks>Please ensure that you use the proper replaceCount
+    /// if you replace halfway in an instruction you may cause bad things</remarks>
+    /// <returns>UIntPtr to created code cave for use for later deallocation</returns>
+    public UIntPtr CreateTrampoline(string code, byte[] newBytes, int replaceCount, int size = 0x1000,
+        bool makeTrampoline = true, string file = "")
+    {
+        if (replaceCount < 5)
+            return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
+        // to better match existing code
+
+        UIntPtr theCode = Get64BitCode(code, file);
+
+        // if x64 we need to try to allocate near the address so we dont run into the +-2GB limit of the 0xE9 jmp
+
+        UIntPtr caveAddress = UIntPtr.Zero;
+        UIntPtr preferred = theCode;
+
+        for (int i = 0; i < 10 && caveAddress == UIntPtr.Zero; i++)
         {
-            if (replaceCount < 5)
-                return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
-            // to better match existing code
-
-            UIntPtr theCode = Get64BitCode(code, file);
-
-            // if x64 we need to try to allocate near the address so we dont run into the +-2GB limit of the 0xE9 jmp
-
-            UIntPtr caveAddress = UIntPtr.Zero;
-            UIntPtr preferred = theCode;
-
-            for (int i = 0; i < 10 && caveAddress == UIntPtr.Zero; i++)
-            {
-                caveAddress = VirtualAllocEx(MProc.Handle, FindFreeBlockForRegion(preferred, (uint)size), (uint)size,
-                    MemCommit | MemReserve, ExecuteReadwrite);
-
-                if (caveAddress == UIntPtr.Zero)
-                    preferred = UIntPtr.Add(preferred, 0x10000);
-            }
-
-            // Failed to allocate memory around the address we wanted let windows handle it and hope for the best?
-            if (caveAddress == UIntPtr.Zero)
-                caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, MemCommit | MemReserve,
-                    ExecuteReadwrite);
-
-            int nopsNeeded = replaceCount > 5 ? replaceCount - 5 : 0;
-
-            // (to - from - 5)
-            int offset = (int)((long)caveAddress - (long)theCode - 5);
-
-            byte[] jmpBytes = new byte[5 + nopsNeeded];
-            jmpBytes[0] = 0xE9;
-            BitConverter.GetBytes(offset).CopyTo(jmpBytes, 1);
-
-            for (int i = 5; i < jmpBytes.Length; i++)
-            {
-                jmpBytes[i] = 0x90;
-            }
-
-            byte[] caveBytes = new byte[5 + newBytes.Length];
-            offset = (int)((long)theCode + jmpBytes.Length - ((long)caveAddress + newBytes.Length) - 5);
-
-            newBytes.CopyTo(caveBytes, 0);
-            caveBytes[newBytes.Length] = 0xE9;
-            BitConverter.GetBytes(offset).CopyTo(caveBytes, newBytes.Length + 1);
-
-            WriteArrayMemory(caveAddress, caveBytes);
-
-            if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
-
-            return caveAddress;
-        }
-
-        public UIntPtr CreateFarTrampoline(string code, byte[] newBytes, int replaceCount, int size = 0x1000,
-            bool makeTrampoline = true, string file = "")
-        {
-            if (replaceCount < 14)
-                return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
-            // to better match existing code
-
-            UIntPtr theCode = Get64BitCode(code, file);
-            UIntPtr address = theCode;
-
-            // We're using a 14-byte 0xFF jmp instruction now, meaning no matter what we won't run into a limit.
-
-            UIntPtr caveAddress = UIntPtr.Zero;
-
-            // Failed to allocate memory around the address we wanted let windows handle it and hope for the best?
-            if (caveAddress == UIntPtr.Zero)
-                caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, MemCommit | MemReserve,
-                    ExecuteReadwrite);
-
-            int nopsNeeded = replaceCount > 14 ? replaceCount - 14 : 0;
-
-            byte[] jmpBytes = new byte[14 + nopsNeeded];
-            jmpBytes[0] = 0xFF;
-            jmpBytes[1] = 0x25;
-            BitConverter.GetBytes((long)caveAddress).CopyTo(jmpBytes, 6);
-
-            for (int i = 14; i < jmpBytes.Length; i++)
-            {
-                jmpBytes[i] = 0x90;
-            }
-
-            byte[] caveBytes = new byte[newBytes.Length + 14];
-
-            newBytes.CopyTo(caveBytes, 0);
-            caveBytes[newBytes.Length] = 0xFF;
-            caveBytes[newBytes.Length + 1] = 0x25;
-            BitConverter.GetBytes((long)address + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
-
-            WriteArrayMemory(caveAddress, caveBytes);
-
-            if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
-
-            return caveAddress;
-        }
-
-        public UIntPtr CreateCallTrampoline(string code, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
-            int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
-        {
-            if (replaceCount < 16)
-                return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
-            // to better match existing code
-
-            UIntPtr theCode = Get64BitCode(code);
-            UIntPtr address = theCode;
-
-            // This uses a 16-byte call instruction. Makes it easier to translate aob scripts that return at different places.
-
-            UIntPtr caveAddress = UIntPtr.Zero;
+            caveAddress = VirtualAllocEx(MProc.Handle, FindFreeBlockForRegion(preferred, (uint)size), (uint)size,
+                MemCommit | MemReserve, ExecuteReadwrite);
 
             if (caveAddress == UIntPtr.Zero)
-                caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, 0x1000 | 0x2000, 0x40);
-
-            int nopsNeeded = replaceCount > 16 ? replaceCount - 16 : 0;
-
-            byte[] jmpBytes = new byte[16 + nopsNeeded];
-            jmpBytes[0] = 0xFF;
-            jmpBytes[1] = 0x15;
-            jmpBytes[2] = 0x02;
-            //00 00 00
-            jmpBytes[6] = 0xEB;
-            jmpBytes[7] = 0x08;
-            BitConverter.GetBytes((long)caveAddress).CopyTo(jmpBytes, 8);
-
-            for (int i = 16; i < jmpBytes.Length; i++)
-            {
-                jmpBytes[i] = 0x90;
-            }
-
-            byte[] caveBytes = new byte[newBytes.Length + 1];
-
-            newBytes.CopyTo(caveBytes, 0);
-            caveBytes[newBytes.Length] = 0xC3;
-
-            WriteArrayMemory(caveAddress, caveBytes);
-            if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
-
-            if (varBytes != null!)
-                WriteArrayMemory(caveAddress + caveBytes.Length + varOffset, varBytes);
-
-            return caveAddress;
+                preferred = UIntPtr.Add(preferred, 0x10000);
         }
 
-        public UIntPtr CreateTrampoline(UIntPtr address, string code, byte[] newBytes, int replaceCount,
-            int size = 0x1000, bool makeTrampoline = true, string file = "")
+        // Failed to allocate memory around the address we wanted let windows handle it and hope for the best?
+        if (caveAddress == UIntPtr.Zero)
+            caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, MemCommit | MemReserve,
+                ExecuteReadwrite);
+
+        int nopsNeeded = replaceCount > 5 ? replaceCount - 5 : 0;
+
+        // (to - from - 5)
+        int offset = (int)((long)caveAddress - (long)theCode - 5);
+
+        byte[] jmpBytes = new byte[5 + nopsNeeded];
+        jmpBytes[0] = 0xE9;
+        BitConverter.GetBytes(offset).CopyTo(jmpBytes, 1);
+
+        for (int i = 5; i < jmpBytes.Length; i++)
         {
-            if (replaceCount < 5)
-                return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
-            // to better match existing code
+            jmpBytes[i] = 0x90;
+        }
 
-            UIntPtr theCode = address + LoadIntCode(code, file);
+        byte[] caveBytes = new byte[5 + newBytes.Length];
+        offset = (int)((long)theCode + jmpBytes.Length - ((long)caveAddress + newBytes.Length) - 5);
 
-            // if x64 we need to try to allocate near the address so we dont run into the +-2GB limit of the 0xE9 jmp
+        newBytes.CopyTo(caveBytes, 0);
+        caveBytes[newBytes.Length] = 0xE9;
+        BitConverter.GetBytes(offset).CopyTo(caveBytes, newBytes.Length + 1);
 
-            UIntPtr caveAddress = UIntPtr.Zero;
-            UIntPtr preferred = theCode;
+        WriteArrayMemory(caveAddress, caveBytes);
 
-            for (int i = 0; i < 10 && caveAddress == UIntPtr.Zero; i++)
-            {
-                caveAddress = VirtualAllocEx(MProc.Handle, FindFreeBlockForRegion(preferred, (uint)size), (uint)size,
-                    MemCommit | MemReserve, ExecuteReadwrite);
+        if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
 
-                if (caveAddress == UIntPtr.Zero)
-                    preferred = UIntPtr.Add(preferred, 0x10000);
-            }
+        return caveAddress;
+    }
 
-            // Failed to allocate memory around the address we wanted let windows handle it and hope for the best?
+    public UIntPtr CreateFarTrampoline(string code, byte[] newBytes, int replaceCount, int size = 0x1000,
+        bool makeTrampoline = true, string file = "")
+    {
+        if (replaceCount < 14)
+            return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
+        // to better match existing code
+
+        UIntPtr theCode = Get64BitCode(code, file);
+        UIntPtr address = theCode;
+
+        // We're using a 14-byte 0xFF jmp instruction now, meaning no matter what we won't run into a limit.
+
+        UIntPtr caveAddress = UIntPtr.Zero;
+
+        // Failed to allocate memory around the address we wanted let windows handle it and hope for the best?
+        if (caveAddress == UIntPtr.Zero)
+            caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, MemCommit | MemReserve,
+                ExecuteReadwrite);
+
+        int nopsNeeded = replaceCount > 14 ? replaceCount - 14 : 0;
+
+        byte[] jmpBytes = new byte[14 + nopsNeeded];
+        jmpBytes[0] = 0xFF;
+        jmpBytes[1] = 0x25;
+        BitConverter.GetBytes((long)caveAddress).CopyTo(jmpBytes, 6);
+
+        for (int i = 14; i < jmpBytes.Length; i++)
+        {
+            jmpBytes[i] = 0x90;
+        }
+
+        byte[] caveBytes = new byte[newBytes.Length + 14];
+
+        newBytes.CopyTo(caveBytes, 0);
+        caveBytes[newBytes.Length] = 0xFF;
+        caveBytes[newBytes.Length + 1] = 0x25;
+        BitConverter.GetBytes((long)address + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
+
+        WriteArrayMemory(caveAddress, caveBytes);
+
+        if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
+
+        return caveAddress;
+    }
+
+    public UIntPtr CreateCallTrampoline(string code, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
+    {
+        if (replaceCount < 16)
+            return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
+        // to better match existing code
+
+        UIntPtr theCode = Get64BitCode(code);
+        UIntPtr address = theCode;
+
+        // This uses a 16-byte call instruction. Makes it easier to translate aob scripts that return at different places.
+
+        UIntPtr caveAddress = UIntPtr.Zero;
+
+        if (caveAddress == UIntPtr.Zero)
+            caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, 0x1000 | 0x2000, 0x40);
+
+        int nopsNeeded = replaceCount > 16 ? replaceCount - 16 : 0;
+
+        byte[] jmpBytes = new byte[16 + nopsNeeded];
+        jmpBytes[0] = 0xFF;
+        jmpBytes[1] = 0x15;
+        jmpBytes[2] = 0x02;
+        //00 00 00
+        jmpBytes[6] = 0xEB;
+        jmpBytes[7] = 0x08;
+        BitConverter.GetBytes((long)caveAddress).CopyTo(jmpBytes, 8);
+
+        for (int i = 16; i < jmpBytes.Length; i++)
+        {
+            jmpBytes[i] = 0x90;
+        }
+
+        byte[] caveBytes = new byte[newBytes.Length + 1];
+
+        newBytes.CopyTo(caveBytes, 0);
+        caveBytes[newBytes.Length] = 0xC3;
+
+        WriteArrayMemory(caveAddress, caveBytes);
+        if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
+
+        if (varBytes != null!)
+            WriteArrayMemory(caveAddress + caveBytes.Length + varOffset, varBytes);
+
+        return caveAddress;
+    }
+
+    public UIntPtr CreateTrampoline(UIntPtr address, string code, byte[] newBytes, int replaceCount,
+        int size = 0x1000, bool makeTrampoline = true, string file = "")
+    {
+        if (replaceCount < 5)
+            return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
+        // to better match existing code
+
+        UIntPtr theCode = address + LoadIntCode(code, file);
+
+        // if x64 we need to try to allocate near the address so we dont run into the +-2GB limit of the 0xE9 jmp
+
+        UIntPtr caveAddress = UIntPtr.Zero;
+        UIntPtr preferred = theCode;
+
+        for (int i = 0; i < 10 && caveAddress == UIntPtr.Zero; i++)
+        {
+            caveAddress = VirtualAllocEx(MProc.Handle, FindFreeBlockForRegion(preferred, (uint)size), (uint)size,
+                MemCommit | MemReserve, ExecuteReadwrite);
+
             if (caveAddress == UIntPtr.Zero)
-                caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, MemCommit | MemReserve,
-                    ExecuteReadwrite);
-
-            int nopsNeeded = replaceCount > 5 ? replaceCount - 5 : 0;
-
-            // (to - from - 5)
-            int offset = (int)((long)caveAddress - (long)theCode - 5);
-
-            byte[] jmpBytes = new byte[5 + nopsNeeded];
-            jmpBytes[0] = 0xE9;
-            BitConverter.GetBytes(offset).CopyTo(jmpBytes, 1);
-
-            for (int i = 5; i < jmpBytes.Length; i++)
-            {
-                jmpBytes[i] = 0x90;
-            }
-
-            byte[] caveBytes = new byte[5 + newBytes.Length];
-            offset = (int)((long)theCode + jmpBytes.Length - ((long)caveAddress + newBytes.Length) - 5);
-
-            newBytes.CopyTo(caveBytes, 0);
-            caveBytes[newBytes.Length] = 0xE9;
-            BitConverter.GetBytes(offset).CopyTo(caveBytes, newBytes.Length + 1);
-
-            WriteArrayMemory(caveAddress, caveBytes);
-
-            if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
-
-            return caveAddress;
+                preferred = UIntPtr.Add(preferred, 0x10000);
         }
 
-        public UIntPtr CreateFarTrampoline(UIntPtr address, string code, byte[] newBytes, int replaceCount,
-            int size = 0x1000, bool makeTrampoline = true, string file = "")
+        // Failed to allocate memory around the address we wanted let windows handle it and hope for the best?
+        if (caveAddress == UIntPtr.Zero)
+            caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, MemCommit | MemReserve,
+                ExecuteReadwrite);
+
+        int nopsNeeded = replaceCount > 5 ? replaceCount - 5 : 0;
+
+        // (to - from - 5)
+        int offset = (int)((long)caveAddress - (long)theCode - 5);
+
+        byte[] jmpBytes = new byte[5 + nopsNeeded];
+        jmpBytes[0] = 0xE9;
+        BitConverter.GetBytes(offset).CopyTo(jmpBytes, 1);
+
+        for (int i = 5; i < jmpBytes.Length; i++)
         {
-            if (replaceCount < 14)
-                return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
-            // to better match existing code
-
-            UIntPtr theCode = address + LoadIntCode(code, file);
-            UIntPtr theAddress = theCode;
-
-            // We're using a 14-byte 0xFF jmp instruction now, meaning no matter what we won't run into a limit.
-
-            UIntPtr caveAddress = UIntPtr.Zero;
-
-            // Failed to allocate memory around the address we wanted let windows handle it and hope for the best?
-            if (caveAddress == UIntPtr.Zero)
-                caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, MemCommit | MemReserve,
-                    ExecuteReadwrite);
-
-            int nopsNeeded = replaceCount > 14 ? replaceCount - 14 : 0;
-
-            byte[] jmpBytes = new byte[14 + nopsNeeded];
-            jmpBytes[0] = 0xFF;
-            jmpBytes[1] = 0x25;
-            BitConverter.GetBytes((long)caveAddress).CopyTo(jmpBytes, 6);
-
-            for (int i = 14; i < jmpBytes.Length; i++)
-            {
-                jmpBytes[i] = 0x90;
-            }
-
-            byte[] caveBytes = new byte[newBytes.Length + 14];
-
-            newBytes.CopyTo(caveBytes, 0);
-            caveBytes[newBytes.Length] = 0xFF;
-            caveBytes[newBytes.Length + 1] = 0x25;
-            BitConverter.GetBytes((long)theAddress + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
-
-            WriteArrayMemory(caveAddress, caveBytes);
-            if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
-
-            return caveAddress;
+            jmpBytes[i] = 0x90;
         }
 
-        public UIntPtr CreateCallTrampoline(UIntPtr address, string code, byte[] newBytes, int replaceCount,
-            byte[] varBytes = null!, int varOffset = 0, int size = 0x1000, bool makeTrampoline = true, string file = "")
+        byte[] caveBytes = new byte[5 + newBytes.Length];
+        offset = (int)((long)theCode + jmpBytes.Length - ((long)caveAddress + newBytes.Length) - 5);
+
+        newBytes.CopyTo(caveBytes, 0);
+        caveBytes[newBytes.Length] = 0xE9;
+        BitConverter.GetBytes(offset).CopyTo(caveBytes, newBytes.Length + 1);
+
+        WriteArrayMemory(caveAddress, caveBytes);
+
+        if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
+
+        return caveAddress;
+    }
+
+    public UIntPtr CreateFarTrampoline(UIntPtr address, string code, byte[] newBytes, int replaceCount,
+        int size = 0x1000, bool makeTrampoline = true, string file = "")
+    {
+        if (replaceCount < 14)
+            return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
+        // to better match existing code
+
+        UIntPtr theCode = address + LoadIntCode(code, file);
+        UIntPtr theAddress = theCode;
+
+        // We're using a 14-byte 0xFF jmp instruction now, meaning no matter what we won't run into a limit.
+
+        UIntPtr caveAddress = UIntPtr.Zero;
+
+        // Failed to allocate memory around the address we wanted let windows handle it and hope for the best?
+        if (caveAddress == UIntPtr.Zero)
+            caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, MemCommit | MemReserve,
+                ExecuteReadwrite);
+
+        int nopsNeeded = replaceCount > 14 ? replaceCount - 14 : 0;
+
+        byte[] jmpBytes = new byte[14 + nopsNeeded];
+        jmpBytes[0] = 0xFF;
+        jmpBytes[1] = 0x25;
+        BitConverter.GetBytes((long)caveAddress).CopyTo(jmpBytes, 6);
+
+        for (int i = 14; i < jmpBytes.Length; i++)
         {
-            if (replaceCount < 16)
-                return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
-            // to better match existing code
-
-            UIntPtr theCode = address + LoadIntCode(code, file);
-            UIntPtr theAddress = theCode;
-
-            // This uses a 16-byte call instruction. Makes it easier to translate aob scripts that return at different places.
-
-            UIntPtr caveAddress = UIntPtr.Zero;
-
-            if (caveAddress == UIntPtr.Zero)
-                caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, 0x1000 | 0x2000, 0x40);
-
-            int nopsNeeded = replaceCount > 16 ? replaceCount - 16 : 0;
-
-            byte[] jmpBytes = new byte[16 + nopsNeeded];
-            jmpBytes[0] = 0xFF;
-            jmpBytes[1] = 0x15;
-            jmpBytes[2] = 0x02;
-            //00 00 00
-            jmpBytes[6] = 0xEB;
-            jmpBytes[7] = 0x08;
-            BitConverter.GetBytes((long)caveAddress).CopyTo(jmpBytes, 8);
-
-            for (int i = 16; i < jmpBytes.Length; i++)
-            {
-                jmpBytes[i] = 0x90;
-            }
-
-            byte[] caveBytes = new byte[newBytes.Length + 1];
-
-            newBytes.CopyTo(caveBytes, 0);
-            caveBytes[newBytes.Length] = 0xC3;
-
-            WriteArrayMemory(caveAddress, caveBytes);
-            if (makeTrampoline) WriteArrayMemory(theAddress, jmpBytes);
-
-            if (varBytes != null!)
-                WriteArrayMemory(caveAddress + caveBytes.Length + varOffset, varBytes);
-
-            return caveAddress;
+            jmpBytes[i] = 0x90;
         }
 
-        public enum TrampolineType
+        byte[] caveBytes = new byte[newBytes.Length + 14];
+
+        newBytes.CopyTo(caveBytes, 0);
+        caveBytes[newBytes.Length] = 0xFF;
+        caveBytes[newBytes.Length + 1] = 0x25;
+        BitConverter.GetBytes((long)theAddress + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
+
+        WriteArrayMemory(caveAddress, caveBytes);
+        if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
+
+        return caveAddress;
+    }
+
+    public UIntPtr CreateCallTrampoline(UIntPtr address, string code, byte[] newBytes, int replaceCount,
+        byte[] varBytes = null!, int varOffset = 0, int size = 0x1000, bool makeTrampoline = true, string file = "")
+    {
+        if (replaceCount < 16)
+            return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
+        // to better match existing code
+
+        UIntPtr theCode = address + LoadIntCode(code, file);
+        UIntPtr theAddress = theCode;
+
+        // This uses a 16-byte call instruction. Makes it easier to translate aob scripts that return at different places.
+
+        UIntPtr caveAddress = UIntPtr.Zero;
+
+        if (caveAddress == UIntPtr.Zero)
+            caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, 0x1000 | 0x2000, 0x40);
+
+        int nopsNeeded = replaceCount > 16 ? replaceCount - 16 : 0;
+
+        byte[] jmpBytes = new byte[16 + nopsNeeded];
+        jmpBytes[0] = 0xFF;
+        jmpBytes[1] = 0x15;
+        jmpBytes[2] = 0x02;
+        //00 00 00
+        jmpBytes[6] = 0xEB;
+        jmpBytes[7] = 0x08;
+        BitConverter.GetBytes((long)caveAddress).CopyTo(jmpBytes, 8);
+
+        for (int i = 16; i < jmpBytes.Length; i++)
         {
-            Jump,
-            JumpFar,
-            Call
+            jmpBytes[i] = 0x90;
         }
 
-        public byte[] CalculateTrampoline(UIntPtr address, UIntPtr target, TrampolineType type, int replaceCount)
+        byte[] caveBytes = new byte[newBytes.Length + 1];
+
+        newBytes.CopyTo(caveBytes, 0);
+        caveBytes[newBytes.Length] = 0xC3;
+
+        WriteArrayMemory(caveAddress, caveBytes);
+        if (makeTrampoline) WriteArrayMemory(theAddress, jmpBytes);
+
+        if (varBytes != null!)
+            WriteArrayMemory(caveAddress + caveBytes.Length + varOffset, varBytes);
+
+        return caveAddress;
+    }
+
+    public enum TrampolineType
+    {
+        Jump,
+        JumpFar,
+        Call
+    }
+
+    public byte[] CalculateTrampoline(UIntPtr address, UIntPtr target, TrampolineType type, int replaceCount)
+    {
+        byte[] trampolineBytes = new byte[replaceCount];
+
+        switch (type)
         {
-            byte[] trampolineBytes = new byte[replaceCount];
-
-            switch (type)
-            {
-                case TrampolineType.Jump:
-                    trampolineBytes[0] = 0xE9;
-                    BitConverter.GetBytes((int)((long)target - (long)address - 5)).CopyTo(trampolineBytes, 1);
-                    break;
-                case TrampolineType.JumpFar:
-                    trampolineBytes[0] = 0xFF;
-                    trampolineBytes[1] = 0x25;
-                    BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 6);
-                    break;
-                case TrampolineType.Call:
-                    trampolineBytes[0] = 0xFF;
-                    trampolineBytes[1] = 0x15;
-                    trampolineBytes[2] = 0x02;
-                    //00 00 00
-                    trampolineBytes[6] = 0xEB;
-                    trampolineBytes[7] = 0x08;
-                    BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 8);
-                    break;
-                default:
-                    throw new("Achievement unlocked: How Did We Get Here?");
-            }
-
-            // Fill the rest with nops
-            for (int i = type switch
-                 {
-                     TrampolineType.Jump => 5,
-                     TrampolineType.JumpFar => 14,
-                     TrampolineType.Call => 16,
-                     _ => throw new("Achievement unlocked: How Did We Get Here?")
-                 };
-                 i < trampolineBytes.Length;
-                 i++)
-            {
-                trampolineBytes[i] = 0x90;
-            }
-
-            return trampolineBytes;
+            case TrampolineType.Jump:
+                trampolineBytes[0] = 0xE9;
+                BitConverter.GetBytes((int)((long)target - (long)address - 5)).CopyTo(trampolineBytes, 1);
+                break;
+            case TrampolineType.JumpFar:
+                trampolineBytes[0] = 0xFF;
+                trampolineBytes[1] = 0x25;
+                BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 6);
+                break;
+            case TrampolineType.Call:
+                trampolineBytes[0] = 0xFF;
+                trampolineBytes[1] = 0x15;
+                trampolineBytes[2] = 0x02;
+                //00 00 00
+                trampolineBytes[6] = 0xEB;
+                trampolineBytes[7] = 0x08;
+                BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 8);
+                break;
+            default:
+                throw new("Achievement unlocked: How Did We Get Here?");
         }
 
-        public byte[] CalculateTrampoline(string address, UIntPtr target, TrampolineType type, int replaceCount)
+        // Fill the rest with nops
+        for (int i = type switch
+             {
+                 TrampolineType.Jump => 5,
+                 TrampolineType.JumpFar => 14,
+                 TrampolineType.Call => 16,
+                 _ => throw new("Achievement unlocked: How Did We Get Here?")
+             };
+             i < trampolineBytes.Length;
+             i++)
         {
-            byte[] trampolineBytes = new byte[replaceCount];
-
-            UIntPtr theAddress = Get64BitCode(address);
-            switch (type)
-            {
-                case TrampolineType.Jump:
-                    trampolineBytes[0] = 0xE9;
-                    BitConverter.GetBytes((int)((long)target - (long)theAddress - 5)).CopyTo(trampolineBytes, 1);
-                    break;
-                case TrampolineType.JumpFar:
-                    trampolineBytes[0] = 0xFF;
-                    trampolineBytes[1] = 0x25;
-                    BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 6);
-                    break;
-                case TrampolineType.Call:
-                    trampolineBytes[0] = 0xFF;
-                    trampolineBytes[1] = 0x15;
-                    trampolineBytes[2] = 0x02;
-                    //00 00 00
-                    trampolineBytes[6] = 0xEB;
-                    trampolineBytes[7] = 0x08;
-                    BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 8);
-                    break;
-                default:
-                    throw new("Achievement unlocked: How Did We Get Here?");
-            }
-
-            // Fill the rest with nops
-            for (int i = type switch
-                 {
-                     TrampolineType.Jump => 5,
-                     TrampolineType.JumpFar => 14,
-                     TrampolineType.Call => 16,
-                     _ => throw new("Achievement unlocked: How Did We Get Here?")
-                 };
-                 i < trampolineBytes.Length;
-                 i++)
-            {
-                trampolineBytes[i] = 0x90;
-            }
-
-            return trampolineBytes;
+            trampolineBytes[i] = 0x90;
         }
 
-        private UIntPtr FindFreeBlockForRegion(UIntPtr baseAddress, uint size)
+        return trampolineBytes;
+    }
+
+    public byte[] CalculateTrampoline(string address, UIntPtr target, TrampolineType type, int replaceCount)
+    {
+        byte[] trampolineBytes = new byte[replaceCount];
+
+        UIntPtr theAddress = Get64BitCode(address);
+        switch (type)
         {
-            UIntPtr minAddress = UIntPtr.Subtract(baseAddress, 0x70000000);
-            UIntPtr maxAddress = UIntPtr.Add(baseAddress, 0x70000000);
+            case TrampolineType.Jump:
+                trampolineBytes[0] = 0xE9;
+                BitConverter.GetBytes((int)((long)target - (long)theAddress - 5)).CopyTo(trampolineBytes, 1);
+                break;
+            case TrampolineType.JumpFar:
+                trampolineBytes[0] = 0xFF;
+                trampolineBytes[1] = 0x25;
+                BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 6);
+                break;
+            case TrampolineType.Call:
+                trampolineBytes[0] = 0xFF;
+                trampolineBytes[1] = 0x15;
+                trampolineBytes[2] = 0x02;
+                //00 00 00
+                trampolineBytes[6] = 0xEB;
+                trampolineBytes[7] = 0x08;
+                BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 8);
+                break;
+            default:
+                throw new("Achievement unlocked: How Did We Get Here?");
+        }
 
-            UIntPtr ret = UIntPtr.Zero;
+        // Fill the rest with nops
+        for (int i = type switch
+             {
+                 TrampolineType.Jump => 5,
+                 TrampolineType.JumpFar => 14,
+                 TrampolineType.Call => 16,
+                 _ => throw new("Achievement unlocked: How Did We Get Here?")
+             };
+             i < trampolineBytes.Length;
+             i++)
+        {
+            trampolineBytes[i] = 0x90;
+        }
 
-            GetSystemInfo(out SYSTEM_INFO si);
+        return trampolineBytes;
+    }
 
-            if (MProc.Is64Bit)
-            {
-                if ((long)minAddress > (long)si.MaximumApplicationAddress ||
-                    (long)minAddress < (long)si.MinimumApplicationAddress)
-                    minAddress = si.MinimumApplicationAddress;
+    private UIntPtr FindFreeBlockForRegion(UIntPtr baseAddress, uint size)
+    {
+        UIntPtr minAddress = UIntPtr.Subtract(baseAddress, 0x70000000);
+        UIntPtr maxAddress = UIntPtr.Add(baseAddress, 0x70000000);
 
-                if ((long)maxAddress < (long)si.MinimumApplicationAddress ||
-                    (long)maxAddress > (long)si.MaximumApplicationAddress)
-                    maxAddress = si.MaximumApplicationAddress;
-            }
-            else
-            {
+        UIntPtr ret = UIntPtr.Zero;
+
+        GetSystemInfo(out SYSTEM_INFO si);
+
+        if (MProc.Is64Bit)
+        {
+            if ((long)minAddress > (long)si.MaximumApplicationAddress ||
+                (long)minAddress < (long)si.MinimumApplicationAddress)
                 minAddress = si.MinimumApplicationAddress;
+
+            if ((long)maxAddress < (long)si.MinimumApplicationAddress ||
+                (long)maxAddress > (long)si.MaximumApplicationAddress)
                 maxAddress = si.MaximumApplicationAddress;
-            }
+        }
+        else
+        {
+            minAddress = si.MinimumApplicationAddress;
+            maxAddress = si.MaximumApplicationAddress;
+        }
 
-            UIntPtr current = minAddress;
+        UIntPtr current = minAddress;
 
-            while (VirtualQueryEx(MProc.Handle, current, out MEMORY_BASIC_INFORMATION mbi).ToUInt64() != 0)
+        while (VirtualQueryEx(MProc.Handle, current, out MEMORY_BASIC_INFORMATION mbi).ToUInt64() != 0)
+        {
+            if ((long)mbi.BaseAddress > (long)maxAddress)
+                return UIntPtr.Zero; // No memory found, let windows handle
+
+            if (mbi.State == MemFree && mbi.RegionSize > size)
             {
-                if ((long)mbi.BaseAddress > (long)maxAddress)
-                    return UIntPtr.Zero; // No memory found, let windows handle
-
-                if (mbi.State == MemFree && mbi.RegionSize > size)
+                UIntPtr tmpAddress;
+                if ((long)mbi.BaseAddress % si.AllocationGranularity > 0)
                 {
-                    UIntPtr tmpAddress;
-                    if ((long)mbi.BaseAddress % si.AllocationGranularity > 0)
+                    // The whole size can not be used
+                    tmpAddress = mbi.BaseAddress;
+                    int offset = (int)(si.AllocationGranularity -
+                                       ((long)tmpAddress % si.AllocationGranularity));
+
+                    // Check if there is enough left
+                    if (mbi.RegionSize - offset >= size)
                     {
-                        // The whole size can not be used
-                        tmpAddress = mbi.BaseAddress;
-                        int offset = (int)(si.AllocationGranularity -
-                                           ((long)tmpAddress % si.AllocationGranularity));
+                        // yup there is enough
+                        tmpAddress = UIntPtr.Add(tmpAddress, offset);
 
-                        // Check if there is enough left
-                        if (mbi.RegionSize - offset >= size)
+                        if ((long)tmpAddress < (long)baseAddress)
                         {
-                            // yup there is enough
-                            tmpAddress = UIntPtr.Add(tmpAddress, offset);
-
-                            if ((long)tmpAddress < (long)baseAddress)
-                            {
-                                tmpAddress = UIntPtr.Add(tmpAddress, (int)(mbi.RegionSize - offset - size));
-
-                                if ((long)tmpAddress > (long)baseAddress)
-                                    tmpAddress = baseAddress;
-
-                                // decrease tmpAddress until its aligned properly
-                                tmpAddress = UIntPtr.Subtract(tmpAddress,
-                                    (int)((long)tmpAddress % si.AllocationGranularity));
-                            }
-
-                            // if the difference is closer then use that
-                            if (Math.Abs((long)tmpAddress - (long)baseAddress) <
-                                Math.Abs((long)ret - (long)baseAddress))
-                                ret = tmpAddress;
-                        }
-                    }
-                    else
-                    {
-                        tmpAddress = mbi.BaseAddress;
-
-                        if ((long)tmpAddress < (long)baseAddress) // try to get it the cloest possible 
-                            // (so to the end of the region - size and
-                            // aligned by system allocation granularity)
-                        {
-                            tmpAddress = UIntPtr.Add(tmpAddress, (int)(mbi.RegionSize - size));
+                            tmpAddress = UIntPtr.Add(tmpAddress, (int)(mbi.RegionSize - offset - size));
 
                             if ((long)tmpAddress > (long)baseAddress)
                                 tmpAddress = baseAddress;
 
-                            // decrease until aligned properly
-                            tmpAddress =
-                                UIntPtr.Subtract(tmpAddress, (int)((long)tmpAddress % si.AllocationGranularity));
+                            // decrease tmpAddress until its aligned properly
+                            tmpAddress = UIntPtr.Subtract(tmpAddress,
+                                (int)((long)tmpAddress % si.AllocationGranularity));
                         }
 
-                        if (Math.Abs((long)tmpAddress - (long)baseAddress) < Math.Abs((long)ret - (long)baseAddress))
+                        // if the difference is closer then use that
+                        if (Math.Abs((long)tmpAddress - (long)baseAddress) <
+                            Math.Abs((long)ret - (long)baseAddress))
                             ret = tmpAddress;
                     }
                 }
+                else
+                {
+                    tmpAddress = mbi.BaseAddress;
 
-                if (mbi.RegionSize % si.AllocationGranularity > 0)
-                    mbi.RegionSize += si.AllocationGranularity - (mbi.RegionSize % si.AllocationGranularity);
+                    if ((long)tmpAddress < (long)baseAddress) // try to get it the cloest possible 
+                        // (so to the end of the region - size and
+                        // aligned by system allocation granularity)
+                    {
+                        tmpAddress = UIntPtr.Add(tmpAddress, (int)(mbi.RegionSize - size));
 
-                UIntPtr previous = current;
-                current = new((ulong)mbi.BaseAddress + (ulong)mbi.RegionSize);
+                        if ((long)tmpAddress > (long)baseAddress)
+                            tmpAddress = baseAddress;
 
-                if ((long)current >= (long)maxAddress)
-                    return ret;
+                        // decrease until aligned properly
+                        tmpAddress =
+                            UIntPtr.Subtract(tmpAddress, (int)((long)tmpAddress % si.AllocationGranularity));
+                    }
 
-                if ((long)previous >= (long)current)
-                    return ret; // Overflow
+                    if (Math.Abs((long)tmpAddress - (long)baseAddress) < Math.Abs((long)ret - (long)baseAddress))
+                        ret = tmpAddress;
+                }
             }
 
-            return ret;
+            if (mbi.RegionSize % si.AllocationGranularity > 0)
+                mbi.RegionSize += si.AllocationGranularity - (mbi.RegionSize % si.AllocationGranularity);
+
+            UIntPtr previous = current;
+            current = new((ulong)mbi.BaseAddress + (ulong)mbi.RegionSize);
+
+            if ((long)current >= (long)maxAddress)
+                return ret;
+
+            if ((long)previous >= (long)current)
+                return ret; // Overflow
         }
+
+        return ret;
+    }
 #endif
 
-        public static void SuspendProcess(int pid)
+    public static void SuspendProcess(int pid)
+    {
+        Process process = Process.GetProcessById(pid);
+
+        if (process.ProcessName == string.Empty)
+            return;
+
+        foreach (ProcessThread pT in process.Threads)
         {
-            Process process = Process.GetProcessById(pid);
+            IntPtr pOpenThread = OpenThread(ThreadAccess.SuspendResume, false, (uint)pT.Id);
+            if (pOpenThread == IntPtr.Zero)
+                continue;
 
-            if (process.ProcessName == string.Empty)
-                return;
-
-            foreach (ProcessThread pT in process.Threads)
-            {
-                IntPtr pOpenThread = OpenThread(ThreadAccess.SuspendResume, false, (uint)pT.Id);
-                if (pOpenThread == IntPtr.Zero)
-                    continue;
-
-                _ = SuspendThread(pOpenThread);
-                _ = CloseHandle(pOpenThread);
-            }
+            _ = SuspendThread(pOpenThread);
+            _ = CloseHandle(pOpenThread);
         }
+    }
 
-        public static void ResumeProcess(int pid)
+    public static void ResumeProcess(int pid)
+    {
+        Process process = Process.GetProcessById(pid);
+        if (process.ProcessName == string.Empty)
+            return;
+
+        foreach (ProcessThread pT in process.Threads)
         {
-            Process process = Process.GetProcessById(pid);
-            if (process.ProcessName == string.Empty)
-                return;
+            IntPtr pOpenThread = OpenThread(ThreadAccess.SuspendResume, false, (uint)pT.Id);
+            if (pOpenThread == IntPtr.Zero)
+                continue;
 
-            foreach (ProcessThread pT in process.Threads)
+            int suspendCount;
+            do
             {
-                IntPtr pOpenThread = OpenThread(ThreadAccess.SuspendResume, false, (uint)pT.Id);
-                if (pOpenThread == IntPtr.Zero)
-                    continue;
+                suspendCount = ResumeThread(pOpenThread);
+            } while (suspendCount > 0);
 
-                int suspendCount;
-                do
-                {
-                    suspendCount = ResumeThread(pOpenThread);
-                } while (suspendCount > 0);
-
-                _ = CloseHandle(pOpenThread);
-            }
+            _ = CloseHandle(pOpenThread);
         }
+    }
 
 #if WINXP
 #else
-        public async Task PutTaskDelay(int delay)
-        {
-            await Task.Delay(delay);
-        }
+    public async Task PutTaskDelay(int delay)
+    {
+        await Task.Delay(delay);
+    }
 #endif
 
-        public void AppendAllBytes(string path, byte[] bytes)
-        {
-            using FileStream stream = new(path, FileMode.Append);
-            stream.Write(bytes, 0, bytes.Length);
-        }
+    public void AppendAllBytes(string path, byte[] bytes)
+    {
+        using FileStream stream = new(path, FileMode.Append);
+        stream.Write(bytes, 0, bytes.Length);
+    }
 
-        public byte[] FileToBytes(string path, bool dontDelete = false)
-        {
-            byte[] newArray = File.ReadAllBytes(path);
-            if (!dontDelete)
-                File.Delete(path);
-            return newArray;
-        }
+    public byte[] FileToBytes(string path, bool dontDelete = false)
+    {
+        byte[] newArray = File.ReadAllBytes(path);
+        if (!dontDelete)
+            File.Delete(path);
+        return newArray;
+    }
 
-        public string MSize()
-        {
-            return MProc.Is64Bit ? "x16" : "x8";
-        }
+    public string MSize()
+    {
+        return MProc.Is64Bit ? "x16" : "x8";
+    }
 
-        /// <summary>
-        /// Convert a byte array to hex values in a string.
-        /// </summary>
-        /// <param name="ba">your byte array to convert</param>
-        /// <returns></returns>
-        public static string ByteArrayToHexString(byte[] ba)
+    /// <summary>
+    /// Convert a byte array to hex values in a string.
+    /// </summary>
+    /// <param name="ba">your byte array to convert</param>
+    /// <returns></returns>
+    public static string ByteArrayToHexString(byte[] ba)
+    {
+        StringBuilder hex = new(ba.Length * 2);
+        int i = 1;
+        foreach (byte b in ba)
         {
-            StringBuilder hex = new(ba.Length * 2);
-            int i = 1;
-            foreach (byte b in ba)
+            if (i == 16)
             {
-                if (i == 16)
-                {
-                    hex.Append($"{b:x2}{Environment.NewLine}");
-                    i = 0;
-                }
-                else
-                    hex.Append($"{b:x2} ");
-
-                i++;
+                hex.Append($"{b:x2}{Environment.NewLine}");
+                i = 0;
             }
-
-            return hex.ToString().ToUpper();
-        }
-
-        public static string ByteArrayToString(byte[] ba)
-        {
-            StringBuilder hex = new StringBuilder(ba.Length * 2);
-            foreach (byte b in ba)
-            {
+            else
                 hex.Append($"{b:x2} ");
-            }
 
-            return hex.ToString();
+            i++;
         }
 
-        public ulong GetMinAddress()
+        return hex.ToString().ToUpper();
+    }
+
+    public static string ByteArrayToString(byte[] ba)
+    {
+        StringBuilder hex = new StringBuilder(ba.Length * 2);
+        foreach (byte b in ba)
         {
-            GetSystemInfo(out SYSTEM_INFO si);
-            return (ulong)si.MinimumApplicationAddress;
+            hex.Append($"{b:x2} ");
         }
 
-        /// <summary>
-        /// Dump memory page by page to a dump.dmp file. Can be used with Cheat Engine.
-        /// </summary>
-        public bool DumpMemory(string file = "dump.dmp")
+        return hex.ToString();
+    }
+
+    public ulong GetMinAddress()
+    {
+        GetSystemInfo(out SYSTEM_INFO si);
+        return (ulong)si.MinimumApplicationAddress;
+    }
+
+    /// <summary>
+    /// Dump memory page by page to a dump.dmp file. Can be used with Cheat Engine.
+    /// </summary>
+    public bool DumpMemory(string file = "dump.dmp")
+    {
+        Debug.Write("[DEBUG] memory dump starting... (" + DateTime.Now.ToString("h:mm:ss tt") + ")" +
+                    Environment.NewLine);
+        GetSystemInfo(out SYSTEM_INFO sysInfo);
+
+        UIntPtr procMinAddress = sysInfo.MinimumApplicationAddress;
+
+        // saving the values as long ints so I won't have to do a lot of casts later
+        long procMinAddressL = (long)procMinAddress; //(Int64)procs.MainModule.BaseAddress;
+        long procMaxAddressL = MProc.Process.VirtualMemorySize64 + procMinAddressL;
+
+        //int arrLength = 0;
+        if (File.Exists(file))
+            File.Delete(file);
+
+
+        while (procMinAddressL < procMaxAddressL)
         {
-            Debug.Write("[DEBUG] memory dump starting... (" + DateTime.Now.ToString("h:mm:ss tt") + ")" +
-                        Environment.NewLine);
-            GetSystemInfo(out SYSTEM_INFO sysInfo);
+            VirtualQueryEx(MProc.Handle, procMinAddress, out MEMORY_BASIC_INFORMATION memInfo);
+            byte[] buffer = new byte[memInfo.RegionSize];
+            UIntPtr test = (UIntPtr)memInfo.RegionSize;
+            UIntPtr test2 = (UIntPtr)((long)memInfo.BaseAddress);
 
-            UIntPtr procMinAddress = sysInfo.MinimumApplicationAddress;
+            ReadProcessMemory(MProc.Handle, test2, buffer, test, IntPtr.Zero);
 
-            // saving the values as long ints so I won't have to do a lot of casts later
-            long procMinAddressL = (long)procMinAddress; //(Int64)procs.MainModule.BaseAddress;
-            long procMaxAddressL = MProc.Process.VirtualMemorySize64 + procMinAddressL;
+            AppendAllBytes(file, buffer); //due to memory limits, we have to dump it then store it in an array.
+            //arrLength += buffer.Length;
 
-            //int arrLength = 0;
-            if (File.Exists(file))
-                File.Delete(file);
+            procMinAddressL += memInfo.RegionSize;
+            procMinAddress = new((ulong)procMinAddressL);
+        }
 
 
-            while (procMinAddressL < procMaxAddressL)
+        Debug.Write("[DEBUG] memory dump completed. Saving dump file to " + file + ". (" +
+                    DateTime.Now.ToString("h:mm:ss tt") + ")" + Environment.NewLine);
+        return true;
+    }
+
+    /// <summary>
+    /// get a list of available threads in opened process
+    /// </summary>
+    public void GetThreads()
+    {
+        if (MProc.Process == null)
+        {
+            Debug.WriteLine("mProc.Process is null so GetThreads failed.");
+            return;
+        }
+
+        foreach (ProcessThread thd in MProc.Process.Threads)
+        {
+            Debug.WriteLine("ID:" + thd.Id + " State:" + thd.ThreadState + " Address:" + thd.StartAddress +
+                            " Priority:" + thd.PriorityLevel);
+        }
+    }
+
+    /// <summary>
+    /// Get thread base address by ID. Provided by github.com/osadrac
+    /// </summary>
+    /// <param name="threadId"></param>
+    /// <returns></returns>
+    /// <exception cref="Win32Exception"></exception>
+    public static IntPtr GetThreadStartAddress(int threadId)
+    {
+        IntPtr hThread = OpenThread(ThreadAccess.QueryInformation, false, (uint)threadId);
+        if (hThread == IntPtr.Zero)
+            throw new Win32Exception();
+        IntPtr buf = Marshal.AllocHGlobal(IntPtr.Size);
+        try
+        {
+            int result = NtQueryInformationThread(hThread,
+                ThreadInfoClass.ThreadQuerySetWin32StartAddress,
+                buf, IntPtr.Size, IntPtr.Zero);
+            if (result != 0)
+                throw new Win32Exception($"NtQueryInformationThread failed; NTSTATUS = {result:X8}");
+            return Marshal.ReadIntPtr(buf);
+        }
+        finally
+        {
+            _ = CloseHandle(hThread);
+            Marshal.FreeHGlobal(buf);
+        }
+    }
+
+    /// <summary>
+    /// suspend a thread by ID
+    /// </summary>
+    /// <param name="threadId">the thread you wish to suspend by ID</param>
+    /// <returns></returns>
+    public bool SuspendThreadById(int threadId)
+    {
+        foreach (ProcessThread thd in MProc.Process.Threads)
+        {
+            if (thd.Id != threadId)
+                continue;
+
+            Debug.WriteLine("Found thread " + threadId);
+
+            IntPtr threadHandle = OpenThread(ThreadAccess.SuspendResume, false, (uint)threadId);
+
+            if (threadHandle == IntPtr.Zero)
+                break;
+
+            if (SuspendThread(threadHandle) == -1)
             {
-                VirtualQueryEx(MProc.Handle, procMinAddress, out MEMORY_BASIC_INFORMATION memInfo);
-                byte[] buffer = new byte[memInfo.RegionSize];
-                UIntPtr test = (UIntPtr)memInfo.RegionSize;
-                UIntPtr test2 = (UIntPtr)((long)memInfo.BaseAddress);
-
-                ReadProcessMemory(MProc.Handle, test2, buffer, test, IntPtr.Zero);
-
-                AppendAllBytes(file, buffer); //due to memory limits, we have to dump it then store it in an array.
-                //arrLength += buffer.Length;
-
-                procMinAddressL += memInfo.RegionSize;
-                procMinAddress = new((ulong)procMinAddressL);
+                Debug.WriteLine("Thread failed to suspend");
+                _ = CloseHandle(threadHandle);
+                break;
             }
 
-
-            Debug.Write("[DEBUG] memory dump completed. Saving dump file to " + file + ". (" +
-                        DateTime.Now.ToString("h:mm:ss tt") + ")" + Environment.NewLine);
+            Debug.WriteLine("Thread suspended!");
+            _ = CloseHandle(threadHandle);
             return true;
         }
 
-        /// <summary>
-        /// get a list of available threads in opened process
-        /// </summary>
-        public void GetThreads()
-        {
-            if (MProc.Process == null)
-            {
-                Debug.WriteLine("mProc.Process is null so GetThreads failed.");
-                return;
-            }
-
-            foreach (ProcessThread thd in MProc.Process.Threads)
-            {
-                Debug.WriteLine("ID:" + thd.Id + " State:" + thd.ThreadState + " Address:" + thd.StartAddress +
-                                " Priority:" + thd.PriorityLevel);
-            }
-        }
-
-        /// <summary>
-        /// Get thread base address by ID. Provided by github.com/osadrac
-        /// </summary>
-        /// <param name="threadId"></param>
-        /// <returns></returns>
-        /// <exception cref="Win32Exception"></exception>
-        public static IntPtr GetThreadStartAddress(int threadId)
-        {
-            IntPtr hThread = OpenThread(ThreadAccess.QueryInformation, false, (uint)threadId);
-            if (hThread == IntPtr.Zero)
-                throw new Win32Exception();
-            IntPtr buf = Marshal.AllocHGlobal(IntPtr.Size);
-            try
-            {
-                int result = NtQueryInformationThread(hThread,
-                    ThreadInfoClass.ThreadQuerySetWin32StartAddress,
-                    buf, IntPtr.Size, IntPtr.Zero);
-                if (result != 0)
-                    throw new Win32Exception($"NtQueryInformationThread failed; NTSTATUS = {result:X8}");
-                return Marshal.ReadIntPtr(buf);
-            }
-            finally
-            {
-                _ = CloseHandle(hThread);
-                Marshal.FreeHGlobal(buf);
-            }
-        }
-
-        /// <summary>
-        /// suspend a thread by ID
-        /// </summary>
-        /// <param name="threadId">the thread you wish to suspend by ID</param>
-        /// <returns></returns>
-        public bool SuspendThreadById(int threadId)
-        {
-            foreach (ProcessThread thd in MProc.Process.Threads)
-            {
-                if (thd.Id != threadId)
-                    continue;
-
-                Debug.WriteLine("Found thread " + threadId);
-
-                IntPtr threadHandle = OpenThread(ThreadAccess.SuspendResume, false, (uint)threadId);
-
-                if (threadHandle == IntPtr.Zero)
-                    break;
-
-                if (SuspendThread(threadHandle) == -1)
-                {
-                    Debug.WriteLine("Thread failed to suspend");
-                    _ = CloseHandle(threadHandle);
-                    break;
-                }
-
-                Debug.WriteLine("Thread suspended!");
-                _ = CloseHandle(threadHandle);
-                return true;
-            }
-
-            return false;
-        }
+        return false;
     }
 }
