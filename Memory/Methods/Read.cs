@@ -82,84 +82,6 @@ namespace Memory
             return result;
         }
 
-        public T ReadVectorMemory<T>(string address) where T : struct
-        {
-            Type type = typeof(T);
-            UIntPtr addy = Get64BitCode(address);
-            switch (true)
-            {
-                case true when type == typeof(Vector2):
-                {
-                    byte[] memory = new byte[8];
-
-                    if (!ReadProcessMemory(MProc.Handle, addy, memory, (UIntPtr)8, IntPtr.Zero))
-                        return new();
-
-                    return (T)(object)new Vector2(BitConverter.ToSingle(memory, 0), BitConverter.ToSingle(memory, 4));
-                }
-                case true when type == typeof(Vector3):
-                {
-                    byte[] memory = new byte[12];
-
-                    if (!ReadProcessMemory(MProc.Handle, addy, memory, (UIntPtr)12, IntPtr.Zero))
-                        return new();
-
-                    return (T)(object)new Vector3(BitConverter.ToSingle(memory, 0), BitConverter.ToSingle(memory, 4),
-                        BitConverter.ToSingle(memory, 8));
-                }
-                case true when type == typeof(Vector4):
-                {
-                    byte[] memory = new byte[16];
-
-                    if (!ReadProcessMemory(MProc.Handle, addy, memory, (UIntPtr)16, IntPtr.Zero))
-                        return new();
-
-                    return (T)(object)new Vector4(BitConverter.ToSingle(memory, 0), BitConverter.ToSingle(memory, 4),
-                        BitConverter.ToSingle(memory, 8), BitConverter.ToSingle(memory, 12));
-                }
-                default:
-                    throw new ArgumentException("Invalid type (must be Vector2, Vector3, or Vector4)");
-            }
-        }
-        public T ReadVectorMemory<T>(UIntPtr address) where T : struct
-        {
-            Type type = typeof(T);
-            switch (true)
-            {
-                case true when type == typeof(Vector2):
-                {
-                    byte[] memory = new byte[8];
-
-                    if (!ReadProcessMemory(MProc.Handle, address, memory, (UIntPtr)8, IntPtr.Zero))
-                        return new();
-
-                    return (T)(object)new Vector2(BitConverter.ToSingle(memory, 0), BitConverter.ToSingle(memory, 4));
-                }
-                case true when type == typeof(Vector3):
-                {
-                    byte[] memory = new byte[12];
-
-                    if (!ReadProcessMemory(MProc.Handle, address, memory, (UIntPtr)12, IntPtr.Zero))
-                        return new();
-
-                    return (T)(object)new Vector3(BitConverter.ToSingle(memory, 0), BitConverter.ToSingle(memory, 4),
-                        BitConverter.ToSingle(memory, 8));
-                }
-                case true when type == typeof(Vector4):
-                {
-                    byte[] memory = new byte[16];
-
-                    if (!ReadProcessMemory(MProc.Handle, address, memory, (UIntPtr)16, IntPtr.Zero))
-                        return new();
-
-                    return (T)(object)new Vector4(BitConverter.ToSingle(memory, 0), BitConverter.ToSingle(memory, 4),
-                        BitConverter.ToSingle(memory, 8), BitConverter.ToSingle(memory, 12));
-                }
-                default:
-                    throw new ArgumentException("Invalid type (must be Vector2, Vector3, or Vector4)");
-            }
-        }
-
         public string ReadStringMemory(string address, Encoding stringEncoding = null)
         {
             stringEncoding ??= Encoding.UTF8;
@@ -389,8 +311,8 @@ namespace Memory
             return true switch
             {
                 true when t == typeof(float) => (T)(object)ReadMemory<float>(addy),
-                true when t == typeof(Vector3) => (T)(object)ReadVectorMemory<Vector3>(addy),
-                true when t == typeof(Vector2) => (T)(object)ReadVectorMemory<Vector2>(addy),
+                true when t == typeof(Vector3) => (T)(object)ReadMemory<Vector3>(addy),
+                true when t == typeof(Vector2) => (T)(object)ReadMemory<Vector2>(addy),
                 true when t == typeof(int) => (T)(object)ReadMemory<int>(addy),
                 true when t == typeof(byte) => (T)(object)ReadMemory<byte>(addy),
                 true when t == typeof(bool) => (T)(object)ReadMemory<bool>(addy),
@@ -415,8 +337,8 @@ namespace Memory
             return true switch
             {
                 true when t == typeof(float) => (T)(object)ReadMemory<float>(address),
-                true when t == typeof(Vector3) => (T)(object)ReadVectorMemory<Vector3>(address),
-                true when t == typeof(Vector2) => (T)(object)ReadVectorMemory<Vector2>(address),
+                true when t == typeof(Vector3) => (T)(object)ReadMemory<Vector3>(address),
+                true when t == typeof(Vector2) => (T)(object)ReadMemory<Vector2>(address),
                 true when t == typeof(int) => (T)(object)ReadMemory<int>(address),
                 true when t == typeof(byte) => (T)(object)ReadMemory<byte>(address),
                 true when t == typeof(bool) => (T)(object)ReadMemory<bool>(address),
