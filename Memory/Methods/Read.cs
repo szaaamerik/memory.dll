@@ -82,7 +82,7 @@ namespace Memory
             return result;
         }
 
-        public string ReadStringMemory(string address, Encoding stringEncoding = null)
+        public unsafe string ReadStringMemory(string address, Encoding stringEncoding = null)
         {
             stringEncoding ??= Encoding.UTF8;
             byte[] memoryNormal = new byte[0];
@@ -96,7 +96,7 @@ namespace Memory
                 case 28591: //Latin1
                 {
                     byte memory = 0;
-                    while (ReadProcessMemory(MProc.Handle, addy, memory, (UIntPtr)1, IntPtr.Zero))
+                    while (ReadProcessMemory(MProc.Handle, addy, (long)&memory, (UIntPtr)1, 0))
                     {
                         if (memory == 0)
                             break;
@@ -129,7 +129,7 @@ namespace Memory
                     throw new ArgumentException("Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
             }
         }
-        public string ReadStringMemory(UIntPtr address, Encoding stringEncoding = null)
+        public unsafe string ReadStringMemory(UIntPtr address, Encoding stringEncoding = null)
         {
             stringEncoding ??= Encoding.UTF8;
             byte[] memoryNormal = new byte[0];
@@ -142,7 +142,7 @@ namespace Memory
                 case 28591: //Latin1
                 {
                     byte memory = 0;
-                    while (ReadProcessMemory(MProc.Handle, address, memory, (UIntPtr)1, IntPtr.Zero))
+                    while (ReadProcessMemory(MProc.Handle, address, (long)&memory, (UIntPtr)1, 0))
                     {
                         if (memory == 0)
                             break;
