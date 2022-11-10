@@ -222,7 +222,7 @@ namespace Memory
         /// <returns>First address found</returns>
         public async Task<long> AoBScan(string code, long end, string search, string file = "")
         {
-            long start = (long)GetCode(code, file).ToUInt64();
+            long start = (long)FollowMultiLevelPointer(code).ToUInt64();
 
             return (await AoBScan(start, end, search, true, true, true, false, file)).FirstOrDefault();
         }

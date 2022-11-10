@@ -22,10 +22,10 @@ public partial class Mem
     /// <param name="value">Value to freeze</param>
     /// <param name="speed">The number of milliseconds to wait before setting the value again</param>
     /// <param name="file">ini file to read address from (OPTIONAL)</param>
-    public bool FreezeValue<T>(string address, T value, int speed = 25, string file = "") where T : unmanaged
+    public bool FreezeValue<T>(string address, T value, int speed = 25) where T : unmanaged
     {
         CancellationTokenSource cts = new();
-        UIntPtr addr = GetCode(address, file);
+        UIntPtr addr = FollowMultiLevelPointer(address);
 
         lock (_freezeTokenSrcs)
         {
@@ -111,7 +111,7 @@ public partial class Mem
     /// <param name="address">address where frozen value is stored</param>
     public void UnfreezeValue(string address)
     {
-        UIntPtr addy = GetCode(address);
+        UIntPtr addy = FollowMultiLevelPointer(address);
         Debug.WriteLine("Un-Freezing Address " + address);
         try
         {
@@ -162,7 +162,7 @@ public partial class Mem
 
         byte[] buf = new byte[1];
 
-        UIntPtr theCode = GetCode(code, file);
+        UIntPtr theCode = FollowMultiLevelPointer(code);
 
         for (var i = 0; i < 8; i++)
         {
@@ -175,7 +175,7 @@ public partial class Mem
         
     public unsafe bool WriteMemory<T>(string address, T write, bool removeWriteProtection = true) where T : unmanaged
     {
-        UIntPtr addy = Get64BitCode(address);
+        UIntPtr addy = FollowMultiLevelPointer(address);
         MemoryProtection oldMemProt = 0x00;
             
         if (removeWriteProtection)
@@ -205,7 +205,7 @@ public partial class Mem
 
     public bool WriteStringMemory(string address, string write, Encoding stringEncoding = null, bool removeWriteProtection = true)
     {
-        UIntPtr addy = Get64BitCode(address);
+        UIntPtr addy = FollowMultiLevelPointer(address);
         MemoryProtection oldMemProt = 0x00;
             
         byte[] memory = stringEncoding == null
@@ -243,7 +243,7 @@ public partial class Mem
         
     public unsafe bool WriteArrayMemory<T>(string address, T[] write, bool removeWriteProtection = true) where T : unmanaged
     {
-        UIntPtr addy = Get64BitCode(address);
+        UIntPtr addy = FollowMultiLevelPointer(address);
         MemoryProtection oldMemProt = 0x00;
             
         byte[] buffer = new byte[write.Length * sizeof(T)];
@@ -287,7 +287,7 @@ public partial class Mem
 
     public bool WriteAnyMemory<T>(string address, T write, bool removeWriteProtection = true)
     {
-        UIntPtr addy = Get64BitCode(address);
+        UIntPtr addy = FollowMultiLevelPointer(address);
         Type t = typeof(T);
 
         return true switch

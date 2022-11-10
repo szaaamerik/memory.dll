@@ -41,7 +41,7 @@ public partial class Mem
     {
         byte[] buf = new byte[1];
 
-        UIntPtr theCode = Get64BitCode(code);
+        UIntPtr theCode = FollowMultiLevelPointer(code);
 
         bool[] ret = new bool[8];
 
@@ -66,7 +66,7 @@ public partial class Mem
     {
         int size = Marshal.SizeOf<T>();
         T result;
-        UIntPtr addy = Get64BitCode(address);
+        UIntPtr addy = FollowMultiLevelPointer(address);
         if (!ReadProcessMemory(MProc.Handle, addy, (long)&result, (UIntPtr)size, 0))
             result = default;
 
@@ -86,7 +86,7 @@ public partial class Mem
     {
         stringEncoding ??= Encoding.UTF8;
         byte[] memoryNormal = new byte[0];
-        UIntPtr addy = Get64BitCode(address);
+        UIntPtr addy = FollowMultiLevelPointer(address);
 
         switch (stringEncoding.CodePage)
         {
@@ -180,7 +180,7 @@ public partial class Mem
     {
         stringEncoding ??= Encoding.UTF8;
         byte[] memoryNormal = new byte[length];
-        UIntPtr addy = Get64BitCode(address);
+        UIntPtr addy = FollowMultiLevelPointer(address);
 
         switch (stringEncoding.CodePage)
         {
@@ -277,7 +277,7 @@ public partial class Mem
     public unsafe T[] ReadArrayMemory<T>(string address, int length) where T : unmanaged
     {
         int size = Marshal.SizeOf<T>();
-        UIntPtr addy = Get64BitCode(address);
+        UIntPtr addy = FollowMultiLevelPointer(address);
         T[] results = new T[length];
         for (int i = 0; i < length; i++)
         {
@@ -306,7 +306,7 @@ public partial class Mem
         
     public T ReadAnyMemory<T>(string address)
     {
-        UIntPtr addy = Get64BitCode(address);
+        UIntPtr addy = FollowMultiLevelPointer(address);
         Type t = typeof(T);
         return true switch
         {

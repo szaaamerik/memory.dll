@@ -165,71 +165,8 @@ public partial class Mem
         return OpenProcess(pid, out string _);
     }
 
-    /*public bool IsAdmin()
-    {
-        try
-        {
-            using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
-            {
-                WindowsPrincipal principal = new WindowsPrincipal(identity);
-                return principal.IsInRole(WindowsBuiltInRole.Administrator);
-            }
-        } 
-        catch
-        {
-            Debug.WriteLine("ERROR: Could not determine if program is running as admin. Is the NuGet package \"System.Security.Principal.Windows\" missing?");
-            return false;
-        }
-    }*/
-
-    /// <summary>
-    /// Builds the process modules dictionary (names with addresses). Use mProc.Process.Modules instead.
-    /// </summary>
-    /*public ConcurrentDictionary<string, IntPtr> GetModules()
-    {
-        if (mProc.Process == null)
-        {
-            Debug.WriteLine("mProc.Process is null so GetModules failed.");
-            return null;
-        }
-
-        if (mProc.Is64Bit && IntPtr.Size != 8)
-        {
-            Debug.WriteLine("WARNING: Game is x64, but your Trainer is x86! You will be missing some modules, change your Trainer's Solution Platform.");
-        }
-        else if (!mProc.Is64Bit && IntPtr.Size == 8)
-        {
-            Debug.WriteLine("WARNING: Game is x86, but your Trainer is x64! You will be missing some modules, change your Trainer's Solution Platform.");
-        }
-
-        if (mProc.Process.Modules == null)
-        {
-            Debug.WriteLine("mProc.Process.Modules is null so GetModules failed.");
-            return null;
-        }
-
-        if (mProc.Modules != null)
-            mProc.Modules.Clear();
-        else
-            mProc.Modules = new ConcurrentDictionary<string, IntPtr>();
-
-        foreach (ProcessModule Module in mProc.Process.Modules)
-        {
-            if (Module.ModuleName == null || Module.BaseAddress == null)
-                continue;
-
-            if (!string.IsNullOrEmpty(Module.ModuleName) && !mProc.Modules.ContainsKey(Module.ModuleName))
-                mProc.Modules.TryAdd(Module.ModuleName, Module.BaseAddress);
-        }
-
-        Debug.WriteLine("Found " + mProc.Modules.Count() + " process modules.");
-        return mProc.Modules;
-    }*/
     public void SetFocus()
     {
-        //int style = GetWindowLong(procs.MainWindowHandle, -16);
-        //if ((style & 0x20000000) == 0x20000000) //minimized
-        //    SendMessage(procs.Handle, 0x0112, (IntPtr)0xF120, IntPtr.Zero);
         SetForegroundWindow(MProc.Process.MainWindowHandle);
     }
 
@@ -320,26 +257,23 @@ public partial class Mem
 
     #region protection
 
-    public bool ChangeProtection(string code, MemoryProtection newProtection, out MemoryProtection oldProtection,
-        string file = "")
+    public bool ChangeProtection(string code, MemoryProtection newProtection, out MemoryProtection oldProtection)
     {
-        UIntPtr theCode = Get64BitCode(code, file);
-        if (theCode == UIntPtr.Zero
-            || MProc.Handle == IntPtr.Zero)
+        UIntPtr theCode = FollowMultiLevelPointer(code);
+        if (theCode == UIntPtr.Zero || MProc.Handle == IntPtr.Zero)
         {
             oldProtection = default;
             return false;
         }
 
-        return VirtualProtectEx(MProc.Handle, theCode, (IntPtr)(MProc.Is64Bit ? 8 : 4), newProtection,
-            out oldProtection);
+        return VirtualProtectEx(MProc.Handle, theCode, (IntPtr)(MProc.Is64Bit ? 8 : 4), newProtection, out oldProtection);
     }
 
     public bool ChangeProtection(UIntPtr address, string code, MemoryProtection newProtection,
-        out MemoryProtection oldProtection, string file = "")
+        out MemoryProtection oldProtection)
     {
         UIntPtr addy = code != ""
-            ? Get64BitCode(address.ToString("X") + code, file)
+            ? FollowMultiLevelPointer(address.ToString("X") + code)
             : address;
         if (addy != UIntPtr.Zero
             && MProc.Handle != IntPtr.Zero)
@@ -365,7 +299,6 @@ public partial class Mem
 
         if (MProc.Is64Bit)
         {
-            //Debug.WriteLine("Changing to 64bit code...");
             if (size == 8) size = 16; //change to 64bit
             return Get64BitCode(name, path, size); //jump over to 64bit code grab
         }
@@ -561,7 +494,7 @@ public partial class Mem
 
         if (newOffsets.Contains(','))
         {
-            List<long> offsetsList = new List<long>();
+            List<long> offsetsList = new();
 
             string[] newerOffsets = newOffsets.Split(',');
             foreach (string oldOffsets in newerOffsets)
@@ -661,6 +594,43 @@ public partial class Mem
         }
     }
 
+    public UIntPtr FollowMultiLevelPointer(string path)
+    {
+        UIntPtr base1 = UIntPtr.Zero;
+        string[] offsets = path.Split(',');
+        if (offsets[0].Contains("base") || offsets[0].Contains("main"))
+        {
+            base1 = (UIntPtr)MProc.MainModule.BaseAddress.ToInt64();
+            string[] additions = offsets[0].Split('+');
+            if (additions.Length > 1)
+                for (int i = 1; i < additions.Length; i++)
+                    base1 += int.Parse(additions[i], NumberStyles.HexNumber);
+        }
+        else if (!int.TryParse(offsets[0], out _)) //this is so genius
+        {
+            base1 = (UIntPtr)GetModuleAddressByName(offsets[0]).ToInt64();
+            string[] additions = offsets[0].Split('+');
+            if (additions.Length > 1)
+                for (int i = 1; i < additions.Length; i++)
+                    base1 += int.Parse(additions[i], NumberStyles.HexNumber);
+        }
+        int[] offsetsInt = new int[offsets.Length];
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            string[] additions = offsets[i].Split('+');
+            offsetsInt[i] = int.Parse(additions[0], NumberStyles.HexNumber);
+            if (additions.Length > 1)
+                for (int j = 1; j < additions.Length; j++)
+                    offsetsInt[i] += int.Parse(additions[j], NumberStyles.HexNumber);
+        }
+        UIntPtr address = base1;
+        for (int i = 0; i < offsetsInt.Length; i++)
+        {
+            address = ReadMemory<UIntPtr>(address + offsetsInt[i]);
+        }
+        return address;
+    }
+
     /// <summary>
     /// Close the process when finished.
     /// </summary>
@@ -730,13 +700,13 @@ public partial class Mem
     /// if you replace halfway in an instruction you may cause bad things</remarks>
     /// <returns>UIntPtr to created code cave for use for later deallocation</returns>
     public UIntPtr CreateTrampoline(string code, byte[] newBytes, int replaceCount, int size = 0x1000,
-        bool makeTrampoline = true, string file = "")
+        bool makeTrampoline = true)
     {
         if (replaceCount < 5)
             return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        UIntPtr theCode = Get64BitCode(code, file);
+        UIntPtr theCode = FollowMultiLevelPointer(code);
 
         // if x64 we need to try to allocate near the address so we dont run into the +-2GB limit of the 0xE9 jmp
 
@@ -792,7 +762,7 @@ public partial class Mem
             return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        UIntPtr theCode = Get64BitCode(code, file);
+        UIntPtr theCode = FollowMultiLevelPointer(code);
         UIntPtr address = theCode;
 
         // We're using a 14-byte 0xFF jmp instruction now, meaning no matter what we won't run into a limit.
@@ -837,7 +807,7 @@ public partial class Mem
             return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        UIntPtr theCode = Get64BitCode(code);
+        UIntPtr theCode = FollowMultiLevelPointer(code);
         UIntPtr address = theCode;
 
         // This uses a 16-byte call instruction. Makes it easier to translate aob scripts that return at different places.
@@ -1080,7 +1050,7 @@ public partial class Mem
     {
         byte[] trampolineBytes = new byte[replaceCount];
 
-        UIntPtr theAddress = Get64BitCode(address);
+        UIntPtr theAddress = FollowMultiLevelPointer(address);
         switch (type)
         {
             case TrampolineType.Jump:
