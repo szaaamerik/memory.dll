@@ -114,6 +114,8 @@ namespace Memory
 
         [DllImport("kernel32.dll")]
         public static extern bool WriteProcessMemory(IntPtr hProcess, UIntPtr lpBaseAddress, byte[] lpBuffer, UIntPtr nSize, IntPtr lpNumberOfBytesWritten);
+        [DllImport("kernel32.dll")]
+        public static extern bool WriteProcessMemory(IntPtr hProcess, UIntPtr lpBaseAddress, long lpBuffer, UIntPtr nSize, IntPtr lpNumberOfBytesWritten);
 
         // Added to avoid casting to UIntPtr
         [DllImport("kernel32.dll")]

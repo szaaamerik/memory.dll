@@ -778,9 +778,9 @@ namespace Memory
             caveBytes[newBytes.Length] = 0xE9;
             BitConverter.GetBytes(offset).CopyTo(caveBytes, newBytes.Length + 1);
 
-            WriteBytes(caveAddress, caveBytes);
+            WriteArrayMemory(caveAddress, caveBytes);
 
-            if (makeTrampoline) WriteBytes(theCode, jmpBytes);
+            if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
 
             return caveAddress;
         }
@@ -823,9 +823,9 @@ namespace Memory
             caveBytes[newBytes.Length + 1] = 0x25;
             BitConverter.GetBytes((long)address + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
 
-            WriteBytes(caveAddress, caveBytes);
+            WriteArrayMemory(caveAddress, caveBytes);
 
-            if (makeTrampoline) WriteBytes(address, jmpBytes);
+            if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
 
             return caveAddress;
         }
@@ -868,11 +868,11 @@ namespace Memory
             newBytes.CopyTo(caveBytes, 0);
             caveBytes[newBytes.Length] = 0xC3;
 
-            WriteBytes(caveAddress, caveBytes);
-            if (makeTrampoline) WriteBytes(address, jmpBytes);
+            WriteArrayMemory(caveAddress, caveBytes);
+            if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
 
             if (varBytes != null!)
-                WriteBytes(caveAddress + caveBytes.Length + varOffset, varBytes);
+                WriteArrayMemory(caveAddress + caveBytes.Length + varOffset, varBytes);
 
             return caveAddress;
         }
@@ -926,9 +926,9 @@ namespace Memory
             caveBytes[newBytes.Length] = 0xE9;
             BitConverter.GetBytes(offset).CopyTo(caveBytes, newBytes.Length + 1);
 
-            WriteBytes(caveAddress, caveBytes);
+            WriteArrayMemory(caveAddress, caveBytes);
 
-            if (makeTrampoline) WriteBytes(theCode, jmpBytes);
+            if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
 
             return caveAddress;
         }
@@ -971,8 +971,8 @@ namespace Memory
             caveBytes[newBytes.Length + 1] = 0x25;
             BitConverter.GetBytes((long)theAddress + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
 
-            WriteBytes(caveAddress, caveBytes);
-            if (makeTrampoline) WriteBytes(address, jmpBytes);
+            WriteArrayMemory(caveAddress, caveBytes);
+            if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
 
             return caveAddress;
         }
@@ -1015,11 +1015,11 @@ namespace Memory
             newBytes.CopyTo(caveBytes, 0);
             caveBytes[newBytes.Length] = 0xC3;
 
-            WriteBytes(caveAddress, caveBytes);
-            if (makeTrampoline) WriteBytes(theAddress, jmpBytes);
+            WriteArrayMemory(caveAddress, caveBytes);
+            if (makeTrampoline) WriteArrayMemory(theAddress, jmpBytes);
 
             if (varBytes != null!)
-                WriteBytes(caveAddress + caveBytes.Length + varOffset, varBytes);
+                WriteArrayMemory(caveAddress + caveBytes.Length + varOffset, varBytes);
 
             return caveAddress;
         }
