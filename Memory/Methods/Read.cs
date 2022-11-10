@@ -409,6 +409,32 @@ namespace Memory
                 _ => throw new("FUCK YOU!!!")
             };
         }
+        public T ReadAnyMemory<T>(UIntPtr address)
+        {
+            Type t = typeof(T);
+            return true switch
+            {
+                true when t == typeof(float) => (T)(object)ReadMemory<float>(address),
+                true when t == typeof(Vector3) => (T)(object)ReadVectorMemory<Vector3>(address),
+                true when t == typeof(Vector2) => (T)(object)ReadVectorMemory<Vector2>(address),
+                true when t == typeof(int) => (T)(object)ReadMemory<int>(address),
+                true when t == typeof(byte) => (T)(object)ReadMemory<byte>(address),
+                true when t == typeof(bool) => (T)(object)ReadMemory<bool>(address),
+                true when t == typeof(string) => (T)(object)ReadStringMemory(address),
+                true when t == typeof(short) => (T)(object)ReadMemory<short>(address),
+                true when t == typeof(long) => (T)(object)ReadMemory<long>(address),
+                true when t == typeof(double) => (T)(object)ReadMemory<double>(address),
+                true when t == typeof(ulong) => (T)(object)ReadMemory<ulong>(address),
+                true when t == typeof(uint) => (T)(object)ReadMemory<uint>(address),
+                true when t == typeof(ushort) => (T)(object)ReadMemory<ushort>(address),
+                true when t == typeof(sbyte) => (T)(object)ReadMemory<sbyte>(address),
+                true when t == typeof(char) => (T)(object)ReadMemory<char>(address),
+                true when t == typeof(decimal) => (T)(object)ReadMemory<decimal>(address),
+                true when t == typeof(IntPtr) => (T)(object)ReadMemory<IntPtr>(address),
+                true when t == typeof(UIntPtr) => (T)(object)ReadMemory<UIntPtr>(address),
+                _ => throw new("FUCK YOU!!!")
+            };
+        }
 
 
         private readonly ConcurrentDictionary<string, CancellationTokenSource> _readTokenSrcs = new();
