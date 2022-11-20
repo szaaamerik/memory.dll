@@ -347,7 +347,7 @@ public partial class Mem
             true when t == typeof(short) => (T)(object)ReadMemory<short>(address),
             true when t == typeof(long) => (T)(object)ReadMemory<long>(address),
             true when t == typeof(double) => (T)(object)ReadMemory<double>(address),
-            true when t == typeof(Vector4) => (T)(object)ReadMemory<Vector4>(addy),
+            true when t == typeof(Vector4) => (T)(object)ReadMemory<Vector4>(address),
             true when t == typeof(ulong) => (T)(object)ReadMemory<ulong>(address),
             true when t == typeof(uint) => (T)(object)ReadMemory<uint>(address),
             true when t == typeof(ushort) => (T)(object)ReadMemory<ushort>(address),
