@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0-windows</TargetFramework>
-    <LangVersion>11</LangVersion>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <LangVersion>default</LangVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Memory.dll.$(Platform)</PackageId>
     <PackageProjectUrl>https://erfg12.github.io/memory.dll</PackageProjectUrl>

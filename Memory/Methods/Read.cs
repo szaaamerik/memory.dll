@@ -41,14 +41,14 @@ public partial class Mem
     {
         byte[] buf = new byte[1];
 
-        UIntPtr theCode = FollowMultiLevelPointer(code);
+        nuint theCode = FollowMultiLevelPointer(code);
 
         bool[] ret = new bool[8];
 
-        if (theCode == UIntPtr.Zero)
+        if (theCode == nuint.Zero)
             return ret;
 
-        if (!ReadProcessMemory(MProc.Handle, theCode, buf, (UIntPtr)1, IntPtr.Zero))
+        if (!ReadProcessMemory(MProc.Handle, theCode, buf, 1, nint.Zero))
             return ret;
 
 
@@ -66,17 +66,17 @@ public partial class Mem
     {
         int size = Marshal.SizeOf<T>();
         T result;
-        UIntPtr addy = FollowMultiLevelPointer(address);
-        if (!ReadProcessMemory(MProc.Handle, addy, (long)&result, (UIntPtr)size, 0))
+        nuint addy = FollowMultiLevelPointer(address);
+        if (!ReadProcessMemory(MProc.Handle, addy, (long)&result, (nuint)size, 0))
             result = default;
 
         return result;
     }
-    public unsafe T ReadMemory<T>(UIntPtr address) where T : unmanaged
+    public unsafe T ReadMemory<T>(nuint address) where T : unmanaged
     {
         int size = Marshal.SizeOf<T>();
         T result;
-        if (!ReadProcessMemory(MProc.Handle, address, (long)&result, (UIntPtr)size, 0))
+        if (!ReadProcessMemory(MProc.Handle, address, (long)&result, (nuint)size, 0))
             result = default;
 
         return result;
@@ -86,7 +86,7 @@ public partial class Mem
     {
         stringEncoding ??= Encoding.UTF8;
         byte[] memoryNormal = new byte[0];
-        UIntPtr addy = FollowMultiLevelPointer(address);
+        nuint addy = FollowMultiLevelPointer(address);
 
         switch (stringEncoding.CodePage)
         {
@@ -96,12 +96,12 @@ public partial class Mem
             case 28591: //Latin1
             {
                 byte memory = 0;
-                while (ReadProcessMemory(MProc.Handle, addy, (long)&memory, (UIntPtr)1, 0))
+                while (ReadProcessMemory(MProc.Handle, addy, (long)&memory, 1, 0))
                 {
                     if (memory == 0)
                         break;
                     Array.Resize(ref memoryNormal, memoryNormal.Length + 1);
-                    memoryNormal[memoryNormal.Length - 1] = memory;
+                    memoryNormal[^1] = memory;
                     addy += 1;
                 }
 
@@ -111,15 +111,15 @@ public partial class Mem
             case 1201: //BigEndianUnicode (UTF16 big endian)
             {
                 short memory = 0;
-                while (ReadProcessMemory(MProc.Handle, addy, memory, (UIntPtr)2, IntPtr.Zero))
+                while (ReadProcessMemory(MProc.Handle, addy, memory, 2, nint.Zero))
                 {
                     if (memory == 0)
                         break;
                     Array.Resize(ref memoryNormal, memoryNormal.Length + 2);
                     unchecked
                     {
-                        memoryNormal[memoryNormal.Length - 2] = (byte)memory;
-                        memoryNormal[memoryNormal.Length - 1] = (byte)(memory >> 8);
+                        memoryNormal[^2] = (byte)memory;
+                        memoryNormal[^1] = (byte)(memory >> 8);
                     }
                 }
                     
@@ -129,7 +129,7 @@ public partial class Mem
                 throw new ArgumentException("Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
         }
     }
-    public unsafe string ReadStringMemory(UIntPtr address, Encoding stringEncoding = null)
+    public unsafe string ReadStringMemory(nuint address, Encoding stringEncoding = null)
     {
         stringEncoding ??= Encoding.UTF8;
         byte[] memoryNormal = new byte[0];
@@ -142,12 +142,12 @@ public partial class Mem
             case 28591: //Latin1
             {
                 byte memory = 0;
-                while (ReadProcessMemory(MProc.Handle, address, (long)&memory, (UIntPtr)1, 0))
+                while (ReadProcessMemory(MProc.Handle, address, (long)&memory, 1, 0))
                 {
                     if (memory == 0)
                         break;
                     Array.Resize(ref memoryNormal, memoryNormal.Length + 1);
-                    memoryNormal[memoryNormal.Length - 1] = memory;
+                    memoryNormal[^1] = memory;
                     address += 1;
                 }
 
@@ -157,15 +157,15 @@ public partial class Mem
             case 1201: //BigEndianUnicode (UTF16 big endian)
             {
                 short memory = 0;
-                while (ReadProcessMemory(MProc.Handle, address, memory, (UIntPtr)2, IntPtr.Zero))
+                while (ReadProcessMemory(MProc.Handle, address, memory, 2, nint.Zero))
                 {
                     if (memory == 0)
                         break;
                     Array.Resize(ref memoryNormal, memoryNormal.Length + 2);
                     unchecked
                     {
-                        memoryNormal[memoryNormal.Length - 2] = (byte)memory;
-                        memoryNormal[memoryNormal.Length - 1] = (byte)(memory >> 8);
+                        memoryNormal[^2] = (byte)memory;
+                        memoryNormal[^1] = (byte)(memory >> 8);
                     }
                 }
                     
@@ -180,7 +180,7 @@ public partial class Mem
     {
         stringEncoding ??= Encoding.UTF8;
         byte[] memoryNormal = new byte[length];
-        UIntPtr addy = FollowMultiLevelPointer(address);
+        nuint addy = FollowMultiLevelPointer(address);
 
         switch (stringEncoding.CodePage)
         {
@@ -192,7 +192,7 @@ public partial class Mem
                 byte memory = 0;
                 for (int i = 0; i < length; i++)
                 {
-                    if (!ReadProcessMemory(MProc.Handle, addy, memory, (UIntPtr)1, IntPtr.Zero))
+                    if (!ReadProcessMemory(MProc.Handle, addy, memory, 1, nint.Zero))
                         break;
                         
                     Array.Resize(ref memoryNormal, i + 1);
@@ -208,7 +208,7 @@ public partial class Mem
                 short memory = 0;
                 for (int i = 0; i < length * 2; i += 2)
                 {
-                    if (!ReadProcessMemory(MProc.Handle, addy, memory, (UIntPtr)1, IntPtr.Zero))
+                    if (!ReadProcessMemory(MProc.Handle, addy, memory, 1, nint.Zero))
                         break;
                         
                     Array.Resize(ref memoryNormal, i + 2);
@@ -225,7 +225,7 @@ public partial class Mem
                 throw new ArgumentException("Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
         }
     }
-    public string ReadStringMemory(UIntPtr address, int length, Encoding stringEncoding = null)
+    public string ReadStringMemory(nuint address, int length, Encoding stringEncoding = null)
     {
         stringEncoding ??= Encoding.UTF8;
         byte[] memoryNormal = new byte[length];
@@ -240,7 +240,7 @@ public partial class Mem
                 byte memory = 0;
                 for (int i = 0; i < length; i++)
                 {
-                    if (!ReadProcessMemory(MProc.Handle, address, memory, (UIntPtr)1, IntPtr.Zero))
+                    if (!ReadProcessMemory(MProc.Handle, address, memory, 1, nint.Zero))
                         break;
                         
                     Array.Resize(ref memoryNormal, i + 1);
@@ -256,7 +256,7 @@ public partial class Mem
                 short memory = 0;
                 for (int i = 0; i < length * 2; i += 2)
                 {
-                    if (!ReadProcessMemory(MProc.Handle, address, memory, (UIntPtr)1, IntPtr.Zero))
+                    if (!ReadProcessMemory(MProc.Handle, address, memory, 1, nint.Zero))
                         break;
                         
                     Array.Resize(ref memoryNormal, i + 2);
@@ -277,26 +277,26 @@ public partial class Mem
     public unsafe T[] ReadArrayMemory<T>(string address, int length) where T : unmanaged
     {
         int size = Marshal.SizeOf<T>();
-        UIntPtr addy = FollowMultiLevelPointer(address);
+        nuint addy = FollowMultiLevelPointer(address);
         T[] results = new T[length];
         for (int i = 0; i < length; i++)
         {
             T result;
-            if (!ReadProcessMemory(MProc.Handle, addy, (long)&result, (UIntPtr)size, 0))
+            if (!ReadProcessMemory(MProc.Handle, addy, (long)&result, (nuint)size, 0))
                 result = new();
             results[i] = result;
         }
 
         return results;
     }
-    public unsafe T[] ReadArrayMemory<T>(UIntPtr address, int length) where T : unmanaged
+    public unsafe T[] ReadArrayMemory<T>(nuint address, int length) where T : unmanaged
     {
         int size = Marshal.SizeOf<T>();
         T[] results = new T[length];
         for (int i = 0; i < length; i++)
         {
             T result;
-            if (!ReadProcessMemory(MProc.Handle, address, (long)&result, (UIntPtr)size, 0))
+            if (!ReadProcessMemory(MProc.Handle, address, (long)&result, (nuint)size, 0))
                 result = new();
             results[i] = result;
         }
@@ -306,7 +306,7 @@ public partial class Mem
         
     public T ReadAnyMemory<T>(string address)
     {
-        UIntPtr addy = FollowMultiLevelPointer(address);
+        nuint addy = FollowMultiLevelPointer(address);
         Type t = typeof(T);
         return true switch
         {
@@ -329,12 +329,12 @@ public partial class Mem
             true when t == typeof(sbyte) => (T)(object)ReadMemory<sbyte>(addy),
             true when t == typeof(char) => (T)(object)ReadMemory<char>(addy),
             true when t == typeof(decimal) => (T)(object)ReadMemory<decimal>(addy),
-            true when t == typeof(IntPtr) => (T)(object)ReadMemory<IntPtr>(addy),
-            true when t == typeof(UIntPtr) => (T)(object)ReadMemory<UIntPtr>(addy),
+            true when t == typeof(nint) => (T)(object)ReadMemory<nint>(addy),
+            true when t == typeof(nuint) => (T)(object)ReadMemory<nuint>(addy),
             _ => throw new("FUCK YOU!!!")
         };
     }
-    public T ReadAnyMemory<T>(UIntPtr address)
+    public T ReadAnyMemory<T>(nuint address)
     {
         Type t = typeof(T);
         return true switch
@@ -358,8 +358,8 @@ public partial class Mem
             true when t == typeof(sbyte) => (T)(object)ReadMemory<sbyte>(address),
             true when t == typeof(char) => (T)(object)ReadMemory<char>(address),
             true when t == typeof(decimal) => (T)(object)ReadMemory<decimal>(address),
-            true when t == typeof(IntPtr) => (T)(object)ReadMemory<IntPtr>(address),
-            true when t == typeof(UIntPtr) => (T)(object)ReadMemory<UIntPtr>(address),
+            true when t == typeof(nint) => (T)(object)ReadMemory<nint>(address),
+            true when t == typeof(nuint) => (T)(object)ReadMemory<nuint>(address),
             _ => throw new("FUCK YOU!!!")
         };
     }

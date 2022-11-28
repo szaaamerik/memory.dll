@@ -12,7 +12,7 @@ namespace Memory;
 
 public partial class Mem
 {
-    ConcurrentDictionary<UIntPtr, CancellationTokenSource> _freezeTokenSrcs =
+    ConcurrentDictionary<nuint, CancellationTokenSource> _freezeTokenSrcs =
         new();
 
     /// <summary>
@@ -21,11 +21,10 @@ public partial class Mem
     /// <param name="address">Your address</param>
     /// <param name="value">Value to freeze</param>
     /// <param name="speed">The number of milliseconds to wait before setting the value again</param>
-    /// <param name="file">ini file to read address from (OPTIONAL)</param>
     public bool FreezeValue<T>(string address, T value, int speed = 25) where T : unmanaged
     {
         CancellationTokenSource cts = new();
-        UIntPtr addr = FollowMultiLevelPointer(address);
+        nuint addr = FollowMultiLevelPointer(address);
 
         lock (_freezeTokenSrcs)
         {
@@ -64,7 +63,7 @@ public partial class Mem
         return true;
     }
         
-    public bool FreezeValue<T>(UIntPtr address, T value, int speed = 25, string file = "") where T : unmanaged
+    public bool FreezeValue<T>(nuint address, T value, int speed = 25, string file = "") where T : unmanaged
     {
         CancellationTokenSource cts = new();
 
@@ -111,7 +110,7 @@ public partial class Mem
     /// <param name="address">address where frozen value is stored</param>
     public void UnfreezeValue(string address)
     {
-        UIntPtr addy = FollowMultiLevelPointer(address);
+        nuint addy = FollowMultiLevelPointer(address);
         Debug.WriteLine("Un-Freezing Address " + address);
         try
         {
@@ -131,7 +130,7 @@ public partial class Mem
     /// Unfreeze a frozen value at an address
     /// </summary>
     /// <param name="address">address where frozen value is stored</param>
-    public void UnfreezeValue(UIntPtr address)
+    public void UnfreezeValue(nuint address)
     {
         Debug.WriteLine("Un-Freezing Address " + address);
         try
@@ -162,7 +161,7 @@ public partial class Mem
 
         byte[] buf = new byte[1];
 
-        UIntPtr theCode = FollowMultiLevelPointer(code);
+        nuint theCode = FollowMultiLevelPointer(code);
 
         for (var i = 0; i < 8; i++)
         {
@@ -170,42 +169,42 @@ public partial class Mem
                 buf[0] |= (byte)(1 << i);
         }
 
-        WriteProcessMemory(MProc.Handle, theCode, buf, (UIntPtr)1, IntPtr.Zero);
+        WriteProcessMemory(MProc.Handle, theCode, buf, 1, nint.Zero);
     }
         
     public unsafe bool WriteMemory<T>(string address, T write, bool removeWriteProtection = true) where T : unmanaged
     {
-        UIntPtr addy = FollowMultiLevelPointer(address);
+        nuint addy = FollowMultiLevelPointer(address);
         MemoryProtection oldMemProt = 0x00;
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, addy, (IntPtr)8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
+            VirtualProtectEx(MProc.Handle, addy, 8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
             
-        bool ret = WriteProcessMemory(MProc.Handle, addy, (long)&write, (UIntPtr)sizeof(T), IntPtr.Zero);
+        bool ret = WriteProcessMemory(MProc.Handle, addy, (long)&write, (nuint)sizeof(T), nint.Zero);
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, addy, (IntPtr)8, oldMemProt, out _);
+            VirtualProtectEx(MProc.Handle, addy, 8, oldMemProt, out _);
             
         return ret;
     }
-    public unsafe bool WriteMemory<T>(UIntPtr address, T write, bool removeWriteProtection = true) where T : unmanaged
+    public unsafe bool WriteMemory<T>(nuint address, T write, bool removeWriteProtection = true) where T : unmanaged
     {
         MemoryProtection oldMemProt = 0x00;
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, address, (IntPtr)8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
+            VirtualProtectEx(MProc.Handle, address, 8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
             
-        bool ret = WriteProcessMemory(MProc.Handle, address, (long)&write, (UIntPtr)sizeof(T), IntPtr.Zero);
+        bool ret = WriteProcessMemory(MProc.Handle, address, (long)&write, (nuint)sizeof(T), nint.Zero);
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, address, (IntPtr)8, oldMemProt, out _);
+            VirtualProtectEx(MProc.Handle, address, 8, oldMemProt, out _);
             
         return ret;
     }
 
     public bool WriteStringMemory(string address, string write, Encoding stringEncoding = null, bool removeWriteProtection = true)
     {
-        UIntPtr addy = FollowMultiLevelPointer(address);
+        nuint addy = FollowMultiLevelPointer(address);
         MemoryProtection oldMemProt = 0x00;
             
         byte[] memory = stringEncoding == null
@@ -213,16 +212,16 @@ public partial class Mem
             : stringEncoding.GetBytes(write);
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, addy, (IntPtr)8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
+            VirtualProtectEx(MProc.Handle, addy, 8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
             
-        bool ret = WriteProcessMemory(MProc.Handle, addy, memory, (UIntPtr)memory.Length, IntPtr.Zero);
+        bool ret = WriteProcessMemory(MProc.Handle, addy, memory, (nuint)memory.Length, nint.Zero);
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, addy, (IntPtr)8, oldMemProt, out _);
+            VirtualProtectEx(MProc.Handle, addy, 8, oldMemProt, out _);
 
         return ret;
     }
-    public bool WriteStringMemory(UIntPtr address, string write, Encoding stringEncoding = null, bool removeWriteProtection = true)
+    public bool WriteStringMemory(nuint address, string write, Encoding stringEncoding = null, bool removeWriteProtection = true)
     {
         MemoryProtection oldMemProt = 0x00;
             
@@ -231,39 +230,39 @@ public partial class Mem
             : stringEncoding.GetBytes(write);
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, address, (IntPtr)8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
+            VirtualProtectEx(MProc.Handle, address, 8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
             
-        bool ret = WriteProcessMemory(MProc.Handle, address, memory, (UIntPtr)memory.Length, IntPtr.Zero);
+        bool ret = WriteProcessMemory(MProc.Handle, address, memory, (nuint)memory.Length, nint.Zero);
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, address, (IntPtr)8, oldMemProt, out _);
+            VirtualProtectEx(MProc.Handle, address, 8, oldMemProt, out _);
 
         return ret;
     }
         
     public unsafe bool WriteArrayMemory<T>(string address, T[] write, bool removeWriteProtection = true) where T : unmanaged
     {
-        UIntPtr addy = FollowMultiLevelPointer(address);
+        nuint addy = FollowMultiLevelPointer(address);
         MemoryProtection oldMemProt = 0x00;
             
         byte[] buffer = new byte[write.Length * sizeof(T)];
 
         fixed (T* ptr = write)
         {
-            Marshal.Copy((IntPtr)ptr, buffer, 0, buffer.Length);
+            Marshal.Copy((nint)ptr, buffer, 0, buffer.Length);
         }
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, addy, (IntPtr)8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
+            VirtualProtectEx(MProc.Handle, addy, 8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
             
-        bool ret = WriteProcessMemory(MProc.Handle, addy, buffer, (UIntPtr)buffer.Length, IntPtr.Zero);
+        bool ret = WriteProcessMemory(MProc.Handle, addy, buffer, (nuint)buffer.Length, nint.Zero);
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, addy, (IntPtr)8, oldMemProt, out _);
+            VirtualProtectEx(MProc.Handle, addy, 8, oldMemProt, out _);
             
         return ret;
     }
-    public unsafe bool WriteArrayMemory<T>(UIntPtr address, T[] write, bool removeWriteProtection = true) where T : unmanaged
+    public unsafe bool WriteArrayMemory<T>(nuint address, T[] write, bool removeWriteProtection = true) where T : unmanaged
     {
         MemoryProtection oldMemProt = 0x00;
             
@@ -271,23 +270,23 @@ public partial class Mem
 
         fixed (T* ptr = write)
         {
-            Marshal.Copy((IntPtr)ptr, buffer, 0, buffer.Length);
+            Marshal.Copy((nint)ptr, buffer, 0, buffer.Length);
         }
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, address, (IntPtr)8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
+            VirtualProtectEx(MProc.Handle, address, 8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
             
-        bool ret = WriteProcessMemory(MProc.Handle, address, buffer, (UIntPtr)buffer.Length, IntPtr.Zero);
+        bool ret = WriteProcessMemory(MProc.Handle, address, buffer, (nuint)buffer.Length, nint.Zero);
             
         if (removeWriteProtection)
-            VirtualProtectEx(MProc.Handle, address, (IntPtr)8, oldMemProt, out _);
+            VirtualProtectEx(MProc.Handle, address, 8, oldMemProt, out _);
             
         return ret;
     }
 
     public bool WriteAnyMemory<T>(string address, T write, bool removeWriteProtection = true)
     {
-        UIntPtr addy = FollowMultiLevelPointer(address);
+        nuint addy = FollowMultiLevelPointer(address);
         Type t = typeof(T);
 
         return true switch
@@ -311,13 +310,13 @@ public partial class Mem
             true when t == typeof(sbyte) => WriteMemory(addy, (sbyte)(object)write, removeWriteProtection),
             true when t == typeof(char) => WriteMemory(addy, (char)(object)write, removeWriteProtection),
             true when t == typeof(decimal) => WriteMemory(addy, (decimal)(object)write, removeWriteProtection),
-            true when t == typeof(IntPtr) => WriteMemory(addy, (IntPtr)(object)write, removeWriteProtection),
-            true when t == typeof(UIntPtr) => WriteMemory(addy, (UIntPtr)(object)write, removeWriteProtection),
+            true when t == typeof(nint) => WriteMemory(addy, (nint)(object)write, removeWriteProtection),
+            true when t == typeof(nuint) => WriteMemory(addy, (nuint)(object)write, removeWriteProtection),
             _ => throw new("FUCK YOU!!!")
         };
     }
 
-    public bool WriteAnyMemory<T>(UIntPtr address, T write, bool removeWriteProtection = true)
+    public bool WriteAnyMemory<T>(nuint address, T write, bool removeWriteProtection = true)
     {
         Type t = typeof(T);
 
@@ -343,8 +342,8 @@ public partial class Mem
             true when t == typeof(sbyte) => WriteMemory(address, (sbyte)(object)write, removeWriteProtection),
             true when t == typeof(char) => WriteMemory(address, (char)(object)write, removeWriteProtection),
             true when t == typeof(decimal) => WriteMemory(address, (decimal)(object)write, removeWriteProtection),
-            true when t == typeof(IntPtr) => WriteMemory(address, (IntPtr)(object)write, removeWriteProtection),
-            true when t == typeof(UIntPtr) => WriteMemory(address, (UIntPtr)(object)write, removeWriteProtection),
+            true when t == typeof(nint) => WriteMemory(address, (nint)(object)write, removeWriteProtection),
+            true when t == typeof(nuint) => WriteMemory(address, (nuint)(object)write, removeWriteProtection),
             _ => throw new("FUCK YOU!!!")
         };
     }

@@ -110,8 +110,8 @@ namespace Memory
 
                 GetSystemInfo(out SYSTEM_INFO sysInfo);
 
-                UIntPtr procMinAddress = sysInfo.MinimumApplicationAddress;
-                UIntPtr procMaxAddress = sysInfo.MaximumApplicationAddress;
+                nuint procMinAddress = sysInfo.MinimumApplicationAddress;
+                nuint procMaxAddress = sysInfo.MaximumApplicationAddress;
 
                 if (start < (long)procMinAddress.ToUInt64())
                     start = (long)procMinAddress.ToUInt64();
@@ -120,7 +120,7 @@ namespace Memory
                     end = (long)procMaxAddress.ToUInt64();
 
                 Debug.WriteLine("[DEBUG] memory scan starting... (start:0x" + start.ToString(MSize()) + " end:0x" + end.ToString(MSize()) + " time:" + DateTime.Now.ToString("h:mm:ss tt") + ")");
-                UIntPtr currentBaseAddress = new UIntPtr((ulong)start);
+                nuint currentBaseAddress = (nuint)start;
 
                 //Debug.WriteLine("[DEBUG] start:0x" + start.ToString("X8") + " curBase:0x" + currentBaseAddress.ToUInt64().ToString("X8") + " end:0x" + end.ToString("X8") + " size:0x" + memInfo.RegionSize.ToString("X8") + " vAloc:" + VirtualQueryEx(mProc.Handle, currentBaseAddress, out memInfo).ToUInt64().ToString());
 

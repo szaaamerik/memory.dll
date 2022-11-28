@@ -7,9 +7,8 @@ namespace Memory
     /// </summary>
     struct MemoryRegionResult
     {
-        public UIntPtr CurrentBaseAddress { get; set; }
+        public nuint CurrentBaseAddress { get; set; }
         public long RegionSize { get; set; }
-        public UIntPtr RegionBase { get; set; }
-
+        public nuint RegionBase { get; set; }
     }
 }
