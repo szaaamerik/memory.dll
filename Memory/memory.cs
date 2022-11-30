@@ -1167,7 +1167,7 @@ public partial class Mem
                 {
                     tmpAddress = mbi.BaseAddress;
 
-                    if ((long)tmpAddress < (long)baseAddress) // try to get it the closest possible 
+                    if ((long)tmpAddress < (long)baseAddress) // try to get it the gclosest possible 
                         // (so to the end of the region - size and
                         // aligned by system allocation granularity)
                     {
