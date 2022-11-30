@@ -122,8 +122,6 @@ namespace Memory
                 Debug.WriteLine("[DEBUG] memory scan starting... (start:0x" + start.ToString(MSize()) + " end:0x" + end.ToString(MSize()) + " time:" + DateTime.Now.ToString("h:mm:ss tt") + ")");
                 nuint currentBaseAddress = (nuint)start;
 
-                //Debug.WriteLine("[DEBUG] start:0x" + start.ToString("X8") + " curBase:0x" + currentBaseAddress.ToUInt64().ToString("X8") + " end:0x" + end.ToString("X8") + " size:0x" + memInfo.RegionSize.ToString("X8") + " vAloc:" + VirtualQueryEx(mProc.Handle, currentBaseAddress, out memInfo).ToUInt64().ToString());
-
             while (VirtualQueryEx(MProc.Handle, currentBaseAddress, out MEMORY_BASIC_INFORMATION memInfo).ToUInt64() != 0 &&
                        currentBaseAddress.ToUInt64() < (ulong)end &&
                        currentBaseAddress.ToUInt64() + (ulong)memInfo.RegionSize >

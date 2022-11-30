@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -85,7 +83,7 @@ public partial class Mem
     public unsafe string ReadStringMemory(string address, Encoding stringEncoding = null)
     {
         stringEncoding ??= Encoding.UTF8;
-        byte[] memoryNormal = new byte[0];
+        byte[] memoryNormal = Array.Empty<byte>();
         nuint addy = FollowMultiLevelPointer(address);
 
         switch (stringEncoding.CodePage)
@@ -132,7 +130,7 @@ public partial class Mem
     public unsafe string ReadStringMemory(nuint address, Encoding stringEncoding = null)
     {
         stringEncoding ??= Encoding.UTF8;
-        byte[] memoryNormal = new byte[0];
+        byte[] memoryNormal = Array.Empty<byte>();
 
         switch (stringEncoding.CodePage)
         {

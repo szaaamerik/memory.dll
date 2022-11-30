@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Memory
+﻿namespace Memory
 {
     /// <summary>
     /// AoB scan information.

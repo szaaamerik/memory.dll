@@ -660,11 +660,9 @@ public partial class Mem
             return false;
         }
 
-        foreach (ProcessModule pm in MProc.Process.Modules)
+        if (MProc.Process.Modules.Cast<ProcessModule>().Any(pm => pm.ModuleName.StartsWith("inject", StringComparison.InvariantCultureIgnoreCase)))
         {
-            if (pm.ModuleName != null &&
-                pm.ModuleName.StartsWith("inject", StringComparison.InvariantCultureIgnoreCase))
-                return false;
+            return false;
         }
 
         if (!MProc.Process.Responding)
@@ -702,7 +700,7 @@ public partial class Mem
     /// <param name="newBytes">The opcodes to write in the code cave</param>
     /// <param name="replaceCount">The number of bytes being replaced</param>
     /// <param name="size">size of the allocated region</param>
-    /// <param name="file">ini file to look in</param>
+    /// <param name="makeTrampoline">whether to replace the bytes with the trampoline or not</param>
     /// <remarks>Please ensure that you use the proper replaceCount
     /// if you replace halfway in an instruction you may cause bad things</remarks>
     /// <returns>UIntPtr to created code cave for use for later deallocation</returns>
@@ -1169,7 +1167,7 @@ public partial class Mem
                 {
                     tmpAddress = mbi.BaseAddress;
 
-                    if ((long)tmpAddress < (long)baseAddress) // try to get it the cloest possible 
+                    if ((long)tmpAddress < (long)baseAddress) // try to get it the closest possible 
                         // (so to the end of the region - size and
                         // aligned by system allocation granularity)
                     {
@@ -1311,7 +1309,7 @@ public partial class Mem
     public ulong GetMinAddress()
     {
         GetSystemInfo(out SYSTEM_INFO si);
-        return (ulong)si.MinimumApplicationAddress;
+        return si.MinimumApplicationAddress;
     }
 
     /// <summary>

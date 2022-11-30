@@ -1,8 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
+// ReSharper disable NotAccessedField.Global
+// ReSharper disable UnusedMember.Local
+// ReSharper disable UnusedMember.Global
+// ReSharper disable UnassignedField.Global
+// ReSharper disable FieldCanBeMadeReadOnly.Local
+// ReSharper disable InconsistentNaming
 namespace Memory
 {
     public class Imps
@@ -150,11 +155,10 @@ namespace Memory
         public static extern bool SetForegroundWindow(nint hWnd);
 
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Auto)]
-        //ReSharper disable once InconsistentNaming
         public static extern nint CreateToolhelp32Snapshot([In] uint dwFlags, [In] uint th32ProcessID);
 
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Auto)]
-        static extern bool Process32First([In] nint hSnapshot, ref PROCESSENTRY32 lppe);
+        private static extern bool Process32First([In] nint hSnapshot, ref PROCESSENTRY32 lppe);
 
         [DllImport("kernel32.dll")]
         public static extern bool Module32First(nint hSnapshot, ref MODULEENTRY32 lpme);
@@ -163,7 +167,7 @@ namespace Memory
         public static extern bool Module32Next(nint hSnapshot, ref MODULEENTRY32 lpme);
 
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Auto)]
-        static extern bool Process32Next([In] nint hSnapshot, ref PROCESSENTRY32 lppe);
+        private static extern bool Process32Next([In] nint hSnapshot, ref PROCESSENTRY32 lppe);
 
         /*
          typedef NTSTATUS (WINAPI *LPFUN_NtCreateThreadEx)
@@ -182,10 +186,10 @@ namespace Memory
             );
          */
         [DllImport("ntdll.dll", SetLastError = true)]
-        internal static extern NTSTATUS NtCreateThreadEx(out IntPtr hProcess, AccessMask desiredAccess,
-            IntPtr objectAttributes, UIntPtr processHandle, IntPtr startAddress, IntPtr parameter,
-            ThreadCreationFlags inCreateSuspended, Int32 stackZeroBits, Int32 sizeOfStack, Int32 maximumStackSize,
-            IntPtr attributeList);
+        internal static extern NTSTATUS NtCreateThreadEx(out nint hProcess, AccessMask desiredAccess,
+            nint objectAttributes, nuint processHandle, nint startAddress, nint parameter,
+            ThreadCreationFlags inCreateSuspended, int stackZeroBits, int sizeOfStack, int maximumStackSize,
+            nint attributeList);
 
         // privileges
         public const int ProcessCreateThread = 0x0002;
@@ -255,11 +259,11 @@ namespace Memory
         public struct SYSTEM_INFO
         {
             public ushort ProcessorArchitecture;
-            ushort reserved;
+            public ushort Reserved;
             public uint PageSize;
-            public UIntPtr MinimumApplicationAddress;
-            public UIntPtr MaximumApplicationAddress;
-            public IntPtr ActiveProcessorMask;
+            public nuint MinimumApplicationAddress;
+            public nuint MaximumApplicationAddress;
+            public nint ActiveProcessorMask;
             public uint NumberOfProcessors;
             public uint ProcessorType;
             public uint AllocationGranularity;
@@ -293,8 +297,8 @@ namespace Memory
 
         public struct MEMORY_BASIC_INFORMATION
         {
-            public UIntPtr BaseAddress;
-            public UIntPtr AllocationBase;
+            public nuint BaseAddress;
+            public nuint AllocationBase;
             public uint AllocationProtect;
             public long RegionSize;
             public uint State;
@@ -363,7 +367,7 @@ namespace Memory
             private string szExeFile;
         }
 
-        [StructLayout(LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         public struct MODULEENTRY32
         {
             private uint dwSize;
