@@ -640,11 +640,9 @@ public partial class Mem
             return false;
         }
 
-        foreach (ProcessModule pm in MProc.Process.Modules)
+        if (MProc.Process.Modules.Cast<ProcessModule>().Any(pm => pm.ModuleName.StartsWith("inject", StringComparison.InvariantCultureIgnoreCase)))
         {
-            if (pm.ModuleName != null &&
-                pm.ModuleName.StartsWith("inject", StringComparison.InvariantCultureIgnoreCase))
-                return false;
+            return false;
         }
 
         if (!MProc.Process.Responding)
