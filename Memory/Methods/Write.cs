@@ -12,7 +12,7 @@ namespace Memory;
 
 public partial class Mem
 {
-    ConcurrentDictionary<nuint, CancellationTokenSource> _freezeTokenSrcs =
+    private readonly ConcurrentDictionary<nuint, CancellationTokenSource> _freezeTokenSrcs =
         new();
 
     /// <summary>
@@ -28,12 +28,12 @@ public partial class Mem
 
         lock (_freezeTokenSrcs)
         {
-            if (_freezeTokenSrcs.ContainsKey(addr))
+            if (_freezeTokenSrcs.TryGetValue(addr, out CancellationTokenSource valueFound))
             {
-                Debug.WriteLine("Changing Freezing Address " + address + " Value " + value.ToString());
+                Debug.WriteLine("Changing Freezing Address " + address + " Value " + value);
                 try
                 {
-                    _freezeTokenSrcs[addr].Cancel();
+                    valueFound.Cancel();
                     _freezeTokenSrcs.TryRemove(addr, out _);
                 }
                 catch
@@ -63,18 +63,18 @@ public partial class Mem
         return true;
     }
         
-    public bool FreezeValue<T>(nuint address, T value, int speed = 25, string file = "") where T : unmanaged
+    public bool FreezeValue<T>(nuint address, T value, int speed = 25) where T : unmanaged
     {
         CancellationTokenSource cts = new();
 
         lock (_freezeTokenSrcs)
         {
-            if (_freezeTokenSrcs.ContainsKey(address))
+            if (_freezeTokenSrcs.TryGetValue(address, out CancellationTokenSource valueFound))
             {
                 Debug.WriteLine("Changing Freezing Address " + address + " Value " + value);
                 try
                 {
-                    _freezeTokenSrcs[address].Cancel();
+                    valueFound.Cancel();
                     _freezeTokenSrcs.TryRemove(address, out _);
                 }
                 catch
@@ -153,8 +153,7 @@ public partial class Mem
     /// </summary>
     /// <param name="code">address to write to</param>
     /// <param name="bits">Array of 8 booleans to write</param>
-    /// <param name="file">path and name of ini file. (OPTIONAL)</param>
-    public void WriteBits(string code, bool[] bits, string file = "")
+    public void WriteBits(string code, bool[] bits)
     {
         if (bits.Length != 8)
             throw new ArgumentException("Not enough bits for a whole byte", nameof(bits));
@@ -163,7 +162,7 @@ public partial class Mem
 
         nuint theCode = FollowMultiLevelPointer(code);
 
-        for (var i = 0; i < 8; i++)
+        for (int i = 0; i < 8; i++)
         {
             if (bits[i])
                 buf[0] |= (byte)(1 << i);

@@ -20,12 +20,12 @@ public partial class Mem
 {
     public Proc MProc = new();
 
-    public UIntPtr VirtualQueryEx(IntPtr hProcess, UIntPtr lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer)
+    public nuint VirtualQueryEx(nint hProcess, nuint lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer)
     {
-        UIntPtr retVal;
+        nuint retVal;
 
         // TODO: Need to change this to only check once.
-        if (MProc.Is64Bit || IntPtr.Size == 8)
+        if (MProc.Is64Bit || nint.Size == 8)
         {
             // 64 bit
             MEMORY_BASIC_INFORMATION64 tmp64 = new();
@@ -101,7 +101,7 @@ public partial class Mem
                 //Debug.WriteLine("WARNING: You are not running with raised privileges! Visit https://github.com/erfg12/memory.dll/wiki/Administrative-Privileges"); 
             }
 
-            if (MProc.Handle == IntPtr.Zero)
+            if (MProc.Handle == nint.Zero)
             {
                 int eCode = Marshal.GetLastWin32Error();
                 Debug.WriteLine(
@@ -115,7 +115,7 @@ public partial class Mem
 
             // Lets set the process to 64bit or not here (cuts down on api calls)
             MProc.Is64Bit = Environment.Is64BitOperatingSystem &&
-                            (IsWow64Process(MProc.Handle, out bool retVal) && !retVal);
+                            IsWow64Process(MProc.Handle, out bool retVal) && !retVal;
 
             MProc.MainModule = MProc.Process.MainModule;
 
@@ -165,17 +165,12 @@ public partial class Mem
         return OpenProcess(pid, out string _);
     }
 
-    public void SetFocus()
-    {
-        SetForegroundWindow(MProc.Process.MainWindowHandle);
-    }
-
     /// <summary>
     /// Get the process ID number by process name.
     /// </summary>
     /// <param name="name">Example: "eqgame". Use task manager to find the name. Do not include .exe</param>
     /// <returns></returns>
-    public int GetProcIdFromName(string name) //new 1.0.2 function
+    public static int GetProcIdFromName(string name) //new 1.0.2 function
     {
         Process[] processlist = Process.GetProcesses();
 
@@ -195,61 +190,20 @@ public partial class Mem
         return 0; //if we fail to find it
     }
 
-
-    /// <summary>
-    /// Get code. If just the ini file name is given with no path, it will assume the file is next to the executable.
-    /// </summary>
-    /// <param name="name">label for address or code</param>
-    /// <param name="iniFile">path and name of ini file</param>
-    /// <returns></returns>
-    public string LoadCode(string name, string iniFile)
-    {
-        StringBuilder returnCode = new(1024);
-
-        if (!string.IsNullOrEmpty(iniFile))
-        {
-            if (File.Exists(iniFile))
-            {
-                _ = GetPrivateProfileString("codes", name, "", returnCode, (uint)returnCode.Capacity, iniFile);
-                //Debug.WriteLine("read_ini_result=" + read_ini_result); number of characters returned
-            }
-            else
-                Debug.WriteLine("ERROR: ini file \"" + iniFile + "\" not found!");
-        }
-        else
-            returnCode.Append(name);
-
-        return returnCode.ToString();
-    }
-
-    private int LoadIntCode(string name, string path)
-    {
-        try
-        {
-            int intValue = Convert.ToInt32(LoadCode(name, path), 16);
-            return intValue >= 0 ? intValue : 0;
-        }
-        catch
-        {
-            Debug.WriteLine("ERROR: LoadIntCode function crashed!");
-            return 0;
-        }
-    }
-
     /// <summary>
     /// Make a named pipe (if not already made) and call to a remote function.
     /// </summary>
     /// <param name="func">remote function to call</param>
     /// <param name="name">name of the thread</param>
-    public void ThreadStartClient(string func, string name)
+    public static void ThreadStartClient(string func, string name)
     {
         //ManualResetEvent SyncClientServer = (ManualResetEvent)obj;
-        using NamedPipeClientStream pipeStream = new NamedPipeClientStream(name);
+        using NamedPipeClientStream pipeStream = new(name);
         if (!pipeStream.IsConnected)
             pipeStream.Connect();
 
         //MessageBox.Show("[Client] Pipe connection established");
-        using StreamWriter sw = new StreamWriter(pipeStream);
+        using StreamWriter sw = new(pipeStream);
         if (!sw.AutoFlush)
             sw.AutoFlush = true;
         sw.WriteLine(func);
@@ -260,13 +214,11 @@ public partial class Mem
     public bool ChangeProtection(string code, MemoryProtection newProtection, out MemoryProtection oldProtection)
     {
         nuint theCode = FollowMultiLevelPointer(code);
-        if (theCode == nuint.Zero || MProc.Handle == nint.Zero)
-        {
-            oldProtection = default;
-            return false;
-        }
-
-        return VirtualProtectEx(MProc.Handle, theCode, MProc.Is64Bit ? 8 : 4, newProtection, out oldProtection);
+        if (theCode != nuint.Zero && MProc.Handle != nint.Zero)
+            return VirtualProtectEx(MProc.Handle, theCode, MProc.Is64Bit ? 8 : 4, newProtection, out oldProtection);
+        
+        oldProtection = default;
+        return false;
     }
 
     public bool ChangeProtection(nuint address, string code, MemoryProtection newProtection,
@@ -289,10 +241,9 @@ public partial class Mem
     /// Convert code from string to real address. If path is not blank, will pull from ini file.
     /// </summary>
     /// <param name="name">label in ini file or code</param>
-    /// <param name="path">path to ini file (OPTIONAL)</param>
     /// <param name="size">size of address (default is 8)</param>
     /// <returns></returns>
-    public nuint GetCode(string name, string path = "", int size = 8)
+    public nuint GetCode(string name, int size = 8)
     {
         if (MProc == null)
             return nuint.Zero;
@@ -300,10 +251,10 @@ public partial class Mem
         if (MProc.Is64Bit)
         {
             if (size == 8) size = 16; //change to 64bit
-            return Get64BitCode(name, path, size); //jump over to 64bit code grab
+            return Get64BitCode(name, size); //jump over to 64bit code grab
         }
 
-        string theCode = !string.IsNullOrEmpty(path) ? LoadCode(name, path) : name;
+        string theCode = name;
 
         if (string.IsNullOrEmpty(theCode))
         {
@@ -332,13 +283,13 @@ public partial class Mem
         string newOffsets = theCode;
 
         if (theCode.Contains('+'))
-            newOffsets = theCode.Substring(theCode.IndexOf('+') + 1);
+            newOffsets = theCode[(theCode.IndexOf('+') + 1)..];
 
         byte[] memoryAddress = new byte[size];
 
         if (newOffsets.Contains(','))
         {
-            List<int> offsetsList = new List<int>();
+            List<int> offsetsList = new();
 
             string[] newerOffsets = newOffsets.Split(',');
             foreach (string oldOffsets in newerOffsets)
@@ -391,7 +342,7 @@ public partial class Mem
                     (nuint)size, nint.Zero);
             }
             else
-                ReadProcessMemory(MProc.Handle, (nuint)(offsets[0]), memoryAddress, (nuint)size, nint.Zero);
+                ReadProcessMemory(MProc.Handle, (nuint)offsets[0], memoryAddress, (nuint)size, nint.Zero);
 
             uint num1 = BitConverter.ToUInt32(memoryAddress, 0); //ToUInt64 causes arithmetic overflow.
 
@@ -406,7 +357,8 @@ public partial class Mem
 
             return base1;
         }
-        else // no offsets
+
+        // no offsets
         {
             int trueCode = Convert.ToInt32(newOffsets, 16);
             nint altModule = nint.Zero;
@@ -414,7 +366,7 @@ public partial class Mem
             if (theCode.ToLower().Contains("base") || theCode.ToLower().Contains("main"))
                 altModule = MProc.MainModule.BaseAddress;
             else if (!theCode.ToLower().Contains("base") && !theCode.ToLower().Contains("main") &&
-                     theCode.Contains("+"))
+                     theCode.Contains('+'))
             {
                 string[] moduleName = theCode.Split('+');
                 if (!moduleName[0].ToLower().Contains(".dll") && !moduleName[0].ToLower().Contains(".exe") &&
@@ -440,7 +392,7 @@ public partial class Mem
             else
                 altModule = GetModuleAddressByName(theCode.Split('+')[0]);
 
-            return (UIntPtr)((int)altModule + trueCode);
+            return (nuint)((int)altModule + trueCode);
         }
     }
 
@@ -459,12 +411,11 @@ public partial class Mem
     /// Convert code from string to real address. If path is not blank, will pull from ini file.
     /// </summary>
     /// <param name="name">label in ini file OR code</param>
-    /// <param name="path">path to ini file (OPTIONAL)</param>
     /// <param name="size">size of address (default is 16)</param>
     /// <returns></returns>
-    public nuint Get64BitCode(string name, string path = "", int size = 16)
+    public nuint Get64BitCode(string name, int size = 16)
     {
-        string theCode = !string.IsNullOrEmpty(path) ? LoadCode(name, path) : name;
+        string theCode = name;
 
         if (string.IsNullOrEmpty(theCode))
             return nuint.Zero;
@@ -502,13 +453,13 @@ public partial class Mem
                 string test = oldOffsets;
                 if (oldOffsets.Contains("0x")) test = oldOffsets.Replace("0x", "");
                 long preParse;
-                if (!oldOffsets.Contains("-"))
+                if (!oldOffsets.Contains('-'))
                     preParse = long.Parse(test, NumberStyles.AllowHexSpecifier);
                 else
                 {
                     test = test.Replace("-", "");
                     preParse = long.Parse(test, NumberStyles.AllowHexSpecifier);
-                    preParse = preParse * -1;
+                    preParse *= -1;
                 }
 
                 offsetsList.Add(preParse);
@@ -558,13 +509,13 @@ public partial class Mem
 
             return base1;
         }
-        else
+
         {
             long trueCode = Convert.ToInt64(newOffsets, 16);
             nint altModule = nint.Zero;
             if (theCode.Contains("base") || theCode.Contains("main"))
                 altModule = MProc.MainModule.BaseAddress;
-            else if (!theCode.Contains("base") && !theCode.Contains("main") && theCode.Contains("+"))
+            else if (!theCode.Contains("base") && !theCode.Contains("main") && theCode.Contains('+'))
             {
                 string[] moduleName = theCode.Split('+');
                 if (!moduleName[0].ToLower().Contains(".dll") && !moduleName[0].ToLower().Contains(".exe") &&
@@ -620,14 +571,43 @@ public partial class Mem
             string[] additions = offsets[i].Split('+');
             
             offsetsInt[i - 1] = nuint.Parse(additions[0], NumberStyles.HexNumber);
-            if (additions.Length > 1)
-                for (int j = 1; j < additions.Length; j++)
-                    offsetsInt[i - 1] += nuint.Parse(additions[j], NumberStyles.HexNumber);
+            if (additions.Length <= 1) continue;
+            
+            for (int j = 1; j < additions.Length; j++)
+                offsetsInt[i - 1] += nuint.Parse(additions[j], NumberStyles.HexNumber);
         }
         nuint address = base1;
         for (int i = 0; i < offsetsInt.Length; i++)
         {
             if (i == 0) address = ReadMemory<nuint>(base1);
+            if (i == offsetsInt.Length - 1)
+            {
+                address += offsetsInt[i];
+                return address;
+            }
+            address = ReadMemory<nuint>(address + offsetsInt[i]);
+        }
+        return address;
+    }
+    
+    public nuint FollowMultiLevelPointer(nuint baseAddress, string path)
+    {
+        string[] offsets = path.Split(',');
+        nuint[] offsetsInt = new nuint[offsets.Length];
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            string[] additions = offsets[i].Split('+');
+            
+            offsetsInt[i] = nuint.Parse(additions[0], NumberStyles.HexNumber);
+            if (additions.Length <= 1) continue;
+            
+            for (int j = 1; j < additions.Length; j++)
+                offsetsInt[i] += nuint.Parse(additions[j], NumberStyles.HexNumber);
+        }
+        nuint address = baseAddress;
+        for (int i = 0; i < offsetsInt.Length; i++)
+        {
+            if (i == 0) address = ReadMemory<nuint>(baseAddress);
             if (i == offsetsInt.Length - 1)
             {
                 address += offsetsInt[i];
@@ -643,7 +623,7 @@ public partial class Mem
     /// </summary>
     public void CloseProcess()
     {
-        CloseHandle(MProc.Handle);
+        _ = CloseHandle(MProc.Handle);
         MProc = null;
     }
 
@@ -696,24 +676,24 @@ public partial class Mem
 #if WINXP
 #else
     /// <summary>
-    /// Creates a code cave to write custom opcodes in target process
+    /// Creates a trampoline to run extra code in another process.
     /// </summary>
-    /// <param name="code">Address to create the trampoline</param>
+    /// <param name="address">Address to create the trampoline</param>
     /// <param name="newBytes">The opcodes to write in the code cave</param>
-    /// <param name="replaceCount">The number of bytes being replaced</param>
-    /// <param name="size">size of the allocated region</param>
-    /// <param name="file">ini file to look in</param>
+    /// <param name="replaceCount">The number of bytes to replace with a jmp and nops</param>
+    /// <param name="size">The size of the allocated region</param>
+    /// <param name="makeTrampoline">Whether or not to create the jump for the trampoline</param>
     /// <remarks>Please ensure that you use the proper replaceCount
     /// if you replace halfway in an instruction you may cause bad things</remarks>
-    /// <returns>UIntPtr to created code cave for use for later deallocation</returns>
-    public nuint CreateTrampoline(string code, byte[] newBytes, int replaceCount, int size = 0x1000,
+    /// <returns>The address of the newly allocated memory</returns>
+    public nuint CreateTrampoline(string address, byte[] newBytes, int replaceCount, int size = 0x1000,
         bool makeTrampoline = true)
     {
         if (replaceCount < 5)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        nuint theCode = FollowMultiLevelPointer(code);
+        nuint theCode = FollowMultiLevelPointer(address);
 
         // if x64 we need to try to allocate near the address so we dont run into the +-2GB limit of the 0xE9 jmp
 
@@ -762,23 +742,22 @@ public partial class Mem
         return caveAddress;
     }
 
-    public UIntPtr CreateFarTrampoline(string code, byte[] newBytes, int replaceCount, int size = 0x1000,
-        bool makeTrampoline = true, string file = "")
+    public nuint CreateFarTrampoline(string address, byte[] newBytes, int replaceCount, int size = 0x1000,
+        bool makeTrampoline = true)
     {
         if (replaceCount < 14)
-            return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
+            return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        UIntPtr theCode = FollowMultiLevelPointer(code);
-        UIntPtr address = theCode;
+        nuint theCode = FollowMultiLevelPointer(address);
 
         // We're using a 14-byte 0xFF jmp instruction now, meaning no matter what we won't run into a limit.
 
-        UIntPtr caveAddress = UIntPtr.Zero;
+        nuint caveAddress = nuint.Zero;
 
         // Failed to allocate memory around the address we wanted let windows handle it and hope for the best?
-        if (caveAddress == UIntPtr.Zero)
-            caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, MemCommit | MemReserve,
+        if (caveAddress == nuint.Zero)
+            caveAddress = VirtualAllocEx(MProc.Handle, nuint.Zero, (uint)size, MemCommit | MemReserve,
                 ExecuteReadwrite);
 
         int nopsNeeded = replaceCount > 14 ? replaceCount - 14 : 0;
@@ -798,31 +777,30 @@ public partial class Mem
         newBytes.CopyTo(caveBytes, 0);
         caveBytes[newBytes.Length] = 0xFF;
         caveBytes[newBytes.Length + 1] = 0x25;
-        BitConverter.GetBytes((long)address + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
+        BitConverter.GetBytes((long)theCode + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
 
         WriteArrayMemory(caveAddress, caveBytes);
 
-        if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
+        if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
 
         return caveAddress;
     }
 
-    public UIntPtr CreateCallTrampoline(string code, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+    public nuint CreateCallTrampoline(string address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
         int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
     {
         if (replaceCount < 16)
-            return UIntPtr.Zero; // returning UIntPtr.Zero instead of throwing an exception
+            return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        UIntPtr theCode = FollowMultiLevelPointer(code);
-        UIntPtr address = theCode;
+        nuint theCode = FollowMultiLevelPointer(address);
 
         // This uses a 16-byte call instruction. Makes it easier to translate aob scripts that return at different places.
 
-        UIntPtr caveAddress = UIntPtr.Zero;
+        nuint caveAddress = nuint.Zero;
 
-        if (caveAddress == UIntPtr.Zero)
-            caveAddress = VirtualAllocEx(MProc.Handle, UIntPtr.Zero, (uint)size, 0x1000 | 0x2000, 0x40);
+        if (caveAddress == nuint.Zero)
+            caveAddress = VirtualAllocEx(MProc.Handle, nuint.Zero, (uint)size, 0x1000 | 0x2000, 0x40);
 
         int nopsNeeded = replaceCount > 16 ? replaceCount - 16 : 0;
 
@@ -846,7 +824,7 @@ public partial class Mem
         caveBytes[newBytes.Length] = 0xC3;
 
         WriteArrayMemory(caveAddress, caveBytes);
-        if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
+        if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
 
         if (varBytes != null!)
             WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
@@ -855,13 +833,13 @@ public partial class Mem
     }
 
     public nuint CreateTrampoline(nuint address, string code, byte[] newBytes, int replaceCount,
-        int size = 0x1000, bool makeTrampoline = true, string file = "")
+        int size = 0x1000, bool makeTrampoline = true)
     {
         if (replaceCount < 5)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        nuint theCode = address + (nuint)LoadIntCode(code, file);
+        nuint theCode = FollowMultiLevelPointer(address, code);
 
         // if x64 we need to try to allocate near the address so we dont run into the +-2GB limit of the 0xE9 jmp
 
@@ -911,14 +889,13 @@ public partial class Mem
     }
 
     public nuint CreateFarTrampoline(nuint address, string code, byte[] newBytes, int replaceCount,
-        int size = 0x1000, bool makeTrampoline = true, string file = "")
+        int size = 0x1000, bool makeTrampoline = true)
     {
         if (replaceCount < 14)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        nuint theCode = address + (nuint)LoadIntCode(code, file);
-        nuint theAddress = theCode;
+        nuint theCode = FollowMultiLevelPointer(address, code);
 
         // We're using a 14-byte 0xFF jmp instruction now, meaning no matter what we won't run into a limit.
 
@@ -946,7 +923,7 @@ public partial class Mem
         newBytes.CopyTo(caveBytes, 0);
         caveBytes[newBytes.Length] = 0xFF;
         caveBytes[newBytes.Length + 1] = 0x25;
-        BitConverter.GetBytes((long)theAddress + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
+        BitConverter.GetBytes((long)theCode + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
 
         WriteArrayMemory(caveAddress, caveBytes);
         if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
@@ -955,14 +932,13 @@ public partial class Mem
     }
 
     public nuint CreateCallTrampoline(nuint address, string code, byte[] newBytes, int replaceCount,
-        byte[] varBytes = null!, int varOffset = 0, int size = 0x1000, bool makeTrampoline = true, string file = "")
+        byte[] varBytes = null!, int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
     {
         if (replaceCount < 16)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        nuint theCode = address + (nuint)LoadIntCode(code, file);
-        nuint theAddress = theCode;
+        nuint theCode = FollowMultiLevelPointer(address, code);
 
         // This uses a 16-byte call instruction. Makes it easier to translate aob scripts that return at different places.
 
@@ -993,7 +969,7 @@ public partial class Mem
         caveBytes[newBytes.Length] = 0xC3;
 
         WriteArrayMemory(caveAddress, caveBytes);
-        if (makeTrampoline) WriteArrayMemory(theAddress, jmpBytes);
+        if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
 
         if (varBytes != null!)
             WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
@@ -1008,7 +984,17 @@ public partial class Mem
         Call
     }
 
-    public byte[] CalculateTrampoline(nuint address, nuint target, TrampolineType type, int replaceCount)
+    
+    /// <summary>
+    /// Calculates a trampoline from an address to a target.
+    /// </summary>
+    /// <param name="address">The address to jump from.</param>
+    /// <param name="target">The address to jump to.</param>
+    /// <param name="type">The type of trampoline to create.</param>
+    /// <param name="replaceCount">The number of bytes to replace.</param>
+    /// <returns>A byte array containing the shellcode of trampoline.</returns>
+    /// <exception cref="Exception">Thrown if the trampoline type is not supported, which should never happen.</exception>
+    public static byte[] CalculateTrampoline(nuint address, nuint target, TrampolineType type, int replaceCount)
     {
         byte[] trampolineBytes = new byte[replaceCount];
 
@@ -1053,6 +1039,15 @@ public partial class Mem
         return trampolineBytes;
     }
 
+    /// <summary>
+    /// Calculates a trampoline from an address to a target.
+    /// </summary>
+    /// <param name="address">The address to jump from.</param>
+    /// <param name="target">The address to jump to.</param>
+    /// <param name="type">The type of trampoline to create.</param>
+    /// <param name="replaceCount">The number of bytes to replace.</param>
+    /// <returns>A byte array containing the shellcode of trampoline.</returns>
+    /// <exception cref="Exception">Thrown if the trampoline type is not supported, which should never happen.</exception>
     public byte[] CalculateTrampoline(string address, nuint target, TrampolineType type, int replaceCount)
     {
         byte[] trampolineBytes = new byte[replaceCount];
@@ -1139,7 +1134,7 @@ public partial class Mem
                     // The whole size can not be used
                     tmpAddress = mbi.BaseAddress;
                     int offset = (int)(si.AllocationGranularity -
-                                       ((long)tmpAddress % si.AllocationGranularity));
+                                       (long)tmpAddress % si.AllocationGranularity);
 
                     // Check if there is enough left
                     if (mbi.RegionSize - offset >= size)
@@ -1169,7 +1164,7 @@ public partial class Mem
                 {
                     tmpAddress = mbi.BaseAddress;
 
-                    if ((long)tmpAddress < (long)baseAddress) // try to get it the cloest possible 
+                    if ((long)tmpAddress < (long)baseAddress) // try to get it as close as possible 
                         // (so to the end of the region - size and
                         // aligned by system allocation granularity)
                     {
@@ -1189,7 +1184,7 @@ public partial class Mem
             }
 
             if (mbi.RegionSize % si.AllocationGranularity > 0)
-                mbi.RegionSize += si.AllocationGranularity - (mbi.RegionSize % si.AllocationGranularity);
+                mbi.RegionSize += si.AllocationGranularity - mbi.RegionSize % si.AllocationGranularity;
 
             nuint previous = current;
             current = new(mbi.BaseAddress + (nuint)mbi.RegionSize);
@@ -1247,19 +1242,19 @@ public partial class Mem
 
 #if WINXP
 #else
-    public async Task PutTaskDelay(int delay)
+    public static async Task PutTaskDelay(int delay)
     {
         await Task.Delay(delay);
     }
 #endif
 
-    public void AppendAllBytes(string path, byte[] bytes)
+    public static void AppendAllBytes(string path, byte[] bytes)
     {
         using FileStream stream = new(path, FileMode.Append);
         stream.Write(bytes, 0, bytes.Length);
     }
 
-    public byte[] FileToBytes(string path, bool dontDelete = false)
+    public static byte[] FileToBytes(string path, bool dontDelete = false)
     {
         byte[] newArray = File.ReadAllBytes(path);
         if (!dontDelete)
@@ -1299,7 +1294,7 @@ public partial class Mem
 
     public static string ByteArrayToString(byte[] ba)
     {
-        StringBuilder hex = new StringBuilder(ba.Length * 2);
+        StringBuilder hex = new(ba.Length * 2);
         foreach (byte b in ba)
         {
             hex.Append($"{b:x2} ");
@@ -1308,10 +1303,10 @@ public partial class Mem
         return hex.ToString();
     }
 
-    public ulong GetMinAddress()
+    public static ulong GetMinAddress()
     {
         GetSystemInfo(out SYSTEM_INFO si);
-        return (ulong)si.MinimumApplicationAddress;
+        return si.MinimumApplicationAddress;
     }
 
     /// <summary>
@@ -1341,7 +1336,7 @@ public partial class Mem
             nuint test = (nuint)memInfo.RegionSize;
             nuint test2 = memInfo.BaseAddress;
 
-            ReadProcessMemory(MProc.Handle, test2, buffer, test, IntPtr.Zero);
+            ReadProcessMemory(MProc.Handle, test2, buffer, test, nint.Zero);
 
             AppendAllBytes(file, buffer); //due to memory limits, we have to dump it then store it in an array.
             //arrLength += buffer.Length;
