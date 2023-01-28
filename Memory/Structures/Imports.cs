@@ -40,7 +40,7 @@ public static partial class Imps
     [LibraryImport("kernel32.dll")]
     internal static partial int ResumeThread(nint hThread);
 
-    [LibraryImport("kernel32.dll")]
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool WriteProcessMemory(
         nint hProcess,
@@ -70,17 +70,17 @@ public static partial class Imps
 
     [LibraryImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, [Out] byte[] lpBuffer,
+    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, [MarshalAs(UnmanagedType.LPArray)] out byte[] lpBuffer,
         nuint nSize, nint lpNumberOfBytesRead);
 
     [LibraryImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, [Out] byte lpBuffer,
+    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, out byte lpBuffer,
         nuint nSize, nint lpNumberOfBytesRead);
 
     [LibraryImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, [Out] short lpBuffer,
+    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, out short lpBuffer,
         nuint nSize, nint lpNumberOfBytesRead);
 
     [LibraryImport("kernel32.dll")]

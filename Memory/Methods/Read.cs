@@ -46,7 +46,7 @@ public partial class Mem
         if (theCode == nuint.Zero)
             return ret;
 
-        if (!ReadProcessMemory(MProc.Handle, theCode, buf, 1, nint.Zero))
+        if (!ReadProcessMemory(MProc.Handle, theCode, out buf, 1, nint.Zero))
             return ret;
 
 
@@ -109,7 +109,7 @@ public partial class Mem
             case 1201: //BigEndianUnicode (UTF16 big endian)
             {
                 short memory = 0;
-                while (ReadProcessMemory(MProc.Handle, addy, memory, 2, nint.Zero))
+                while (ReadProcessMemory(MProc.Handle, addy, out memory, 2, nint.Zero))
                 {
                     if (memory == 0)
                         break;
@@ -155,7 +155,7 @@ public partial class Mem
             case 1201: //BigEndianUnicode (UTF16 big endian)
             {
                 short memory = 0;
-                while (ReadProcessMemory(MProc.Handle, address, memory, 2, nint.Zero))
+                while (ReadProcessMemory(MProc.Handle, address, out memory, 2, nint.Zero))
                 {
                     if (memory == 0)
                         break;
@@ -190,7 +190,7 @@ public partial class Mem
                 byte memory = 0;
                 for (int i = 0; i < length; i++)
                 {
-                    if (!ReadProcessMemory(MProc.Handle, addy, memory, 1, nint.Zero))
+                    if (!ReadProcessMemory(MProc.Handle, addy, out memory, 1, nint.Zero))
                         break;
                         
                     Array.Resize(ref memoryNormal, i + 1);
@@ -206,7 +206,7 @@ public partial class Mem
                 short memory = 0;
                 for (int i = 0; i < length * 2; i += 2)
                 {
-                    if (!ReadProcessMemory(MProc.Handle, addy, memory, 1, nint.Zero))
+                    if (!ReadProcessMemory(MProc.Handle, addy, out memory, 1, nint.Zero))
                         break;
                         
                     Array.Resize(ref memoryNormal, i + 2);
@@ -238,7 +238,7 @@ public partial class Mem
                 byte memory = 0;
                 for (int i = 0; i < length; i++)
                 {
-                    if (!ReadProcessMemory(MProc.Handle, address, memory, 1, nint.Zero))
+                    if (!ReadProcessMemory(MProc.Handle, address, out memory, 1, nint.Zero))
                         break;
                         
                     Array.Resize(ref memoryNormal, i + 1);
@@ -254,7 +254,7 @@ public partial class Mem
                 short memory = 0;
                 for (int i = 0; i < length * 2; i += 2)
                 {
-                    if (!ReadProcessMemory(MProc.Handle, address, memory, 1, nint.Zero))
+                    if (!ReadProcessMemory(MProc.Handle, address, out memory, 1, nint.Zero))
                         break;
                         
                     Array.Resize(ref memoryNormal, i + 2);
