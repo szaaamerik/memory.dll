@@ -557,7 +557,7 @@ public partial class Mem
                 for (int i = 1; i < additions.Length; i++)
                     base1 += nuint.Parse(additions[i], NumberStyles.HexNumber);
         }
-        else if (!int.TryParse(offsets[0], out _)) //this is so genius
+        else if (!int.TryParse(offsets[0].Split('+')[0], out _)) //this is so genius
         {
             string[] additions = offsets[0].Split('+');
             base1 = (nuint)GetModuleAddressByName(additions[0]).ToInt64();
