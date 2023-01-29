@@ -313,7 +313,7 @@ public partial class Mem
 
             if (theCode.Contains("base") || theCode.Contains("main"))
                 ReadProcessMemory(MProc.Handle, (nuint)((int)MProc.MainModule.BaseAddress + offsets[0]),
-                    out memoryAddress, (nuint)size, nint.Zero);
+                    memoryAddress, (nuint)size, nint.Zero);
             else if (!theCode.Contains("base") && !theCode.Contains("main") && theCode.Contains('+'))
             {
                 string[] moduleName = theCode.Split('+');
@@ -338,11 +338,11 @@ public partial class Mem
                     }
                 }
 
-                ReadProcessMemory(MProc.Handle, (nuint)((int)altModule + offsets[0]), out memoryAddress,
+                ReadProcessMemory(MProc.Handle, (nuint)((int)altModule + offsets[0]), memoryAddress,
                     (nuint)size, nint.Zero);
             }
             else
-                ReadProcessMemory(MProc.Handle, (nuint)offsets[0], out memoryAddress, (nuint)size, nint.Zero);
+                ReadProcessMemory(MProc.Handle, (nuint)offsets[0], memoryAddress, (nuint)size, nint.Zero);
 
             uint num1 = BitConverter.ToUInt32(memoryAddress, 0); //ToUInt64 causes arithmetic overflow.
 
@@ -351,7 +351,7 @@ public partial class Mem
             for (int i = 1; i < offsets.Length; i++)
             {
                 base1 = new(Convert.ToUInt64(num1 + offsets[i]));
-                ReadProcessMemory(MProc.Handle, base1, out memoryAddress, (nuint)size, nint.Zero);
+                ReadProcessMemory(MProc.Handle, base1, memoryAddress, (nuint)size, nint.Zero);
                 num1 = BitConverter.ToUInt32(memoryAddress, 0); //ToUInt64 causes arithmetic overflow.
             }
 
@@ -469,7 +469,7 @@ public partial class Mem
 
             if (theCode.Contains("base") || theCode.Contains("main"))
                 ReadProcessMemory(MProc.Handle, (nuint)(MProc.MainModule.BaseAddress + offsets[0]),
-                    out memoryAddress, (nuint)size, nint.Zero);
+                    memoryAddress, (nuint)size, nint.Zero);
             else if (!theCode.Contains("base") && !theCode.Contains("main") && theCode.Contains('+'))
             {
                 string[] moduleName = theCode.Split('+');
@@ -490,11 +490,11 @@ public partial class Mem
                     }
                 }
 
-                ReadProcessMemory(MProc.Handle, (nuint)(altModule + offsets[0]), out memoryAddress,
+                ReadProcessMemory(MProc.Handle, (nuint)(altModule + offsets[0]), memoryAddress,
                     (nuint)size, nint.Zero);
             }
             else // no offsets
-                ReadProcessMemory(MProc.Handle, (nuint)offsets[0], out memoryAddress, (nuint)size, nint.Zero);
+                ReadProcessMemory(MProc.Handle, (nuint)offsets[0], memoryAddress, (nuint)size, nint.Zero);
 
             long num1 = BitConverter.ToInt64(memoryAddress, 0);
 
@@ -503,7 +503,7 @@ public partial class Mem
             for (int i = 1; i < offsets.Length; i++)
             {
                 base1 = new(Convert.ToUInt64(num1 + offsets[i]));
-                ReadProcessMemory(MProc.Handle, base1, out memoryAddress, (nuint)size, nint.Zero);
+                ReadProcessMemory(MProc.Handle, base1, memoryAddress, (nuint)size, nint.Zero);
                 num1 = BitConverter.ToInt64(memoryAddress, 0);
             }
 
@@ -1334,7 +1334,7 @@ public partial class Mem
             nuint test = (nuint)memInfo.RegionSize;
             nuint test2 = memInfo.BaseAddress;
 
-            ReadProcessMemory(MProc.Handle, test2, out buffer, test, nint.Zero);
+            ReadProcessMemory(MProc.Handle, test2, buffer, test, nint.Zero);
 
             AppendAllBytes(file, buffer); //due to memory limits, we have to dump it then store it in an array.
             //arrLength += buffer.Length;

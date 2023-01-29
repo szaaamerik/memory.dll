@@ -41,7 +41,6 @@ public static partial class Imps
     internal static extern int ResumeThread(nint hThread);
 
     [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool WriteProcessMemory(
         nint hProcess,
         nuint lpBaseAddress,
@@ -60,7 +59,6 @@ public static partial class Imps
         string lpFileName);
 
     [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool VirtualFreeEx(
         nint hProcess,
         nuint lpAddress,
@@ -69,27 +67,22 @@ public static partial class Imps
     );
 
     [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, [MarshalAs(UnmanagedType.LPArray)] out byte[] lpBuffer,
+    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, [Out] byte[] lpBuffer,
         nuint nSize, nint lpNumberOfBytesRead);
 
     [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, out byte lpBuffer,
+    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, [Out] byte lpBuffer,
         nuint nSize, nint lpNumberOfBytesRead);
 
     [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, out short lpBuffer,
+    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, [Out] short lpBuffer,
         nuint nSize, nint lpNumberOfBytesRead);
 
     [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, long lpBuffer, nuint nSize,
         ulong lpNumberOfBytesRead);
 
     [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, nint lpBuffer, nuint nSize,
         out ulong lpNumberOfBytesRead);
 
@@ -103,7 +96,6 @@ public static partial class Imps
     );
 
     [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool VirtualProtectEx(nint hProcess, nuint lpAddress,
         nint dwSize, MemoryProtection flNewProtect, out MemoryProtection lpflOldProtect);
 
@@ -130,12 +122,10 @@ public static partial class Imps
     );
 
     [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, byte[] lpBuffer, nuint nSize,
         nint lpNumberOfBytesWritten);
 
     [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, long lpBuffer, nuint nSize,
         nint lpNumberOfBytesWritten);
 
@@ -153,7 +143,6 @@ public static partial class Imps
     );
 
     [DllImport("kernel32")]
-    [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool IsWow64Process(nint hProcess, [MarshalAs(UnmanagedType.Bool)] out bool lpSystemInfo);
 
     /*
