@@ -9,8 +9,8 @@ using System.Text;
 namespace Memory;
 public static partial class Imps
 {
-    [LibraryImport("kernel32.dll")]
-    public static partial nint OpenProcess(
+    [DllImport("kernel32.dll")]
+    public static extern nint OpenProcess(
         uint dwDesiredAccess,
         [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle,
         int dwProcessId
@@ -18,31 +18,31 @@ public static partial class Imps
 
 #if WINXP
 #else
-    [LibraryImport("kernel32.dll", EntryPoint = "VirtualQueryEx")]
-    public static partial nuint Native_VirtualQueryEx(nint hProcess, nuint lpAddress,
+    [DllImport("kernel32.dll", EntryPoint = "VirtualQueryEx")]
+    public static extern nuint Native_VirtualQueryEx(nint hProcess, nuint lpAddress,
         out MEMORY_BASIC_INFORMATION32 lpBuffer, nuint dwLength);
 
-    [LibraryImport("kernel32.dll", EntryPoint = "VirtualQueryEx")]
-    public static partial nuint Native_VirtualQueryEx(nint hProcess, nuint lpAddress,
+    [DllImport("kernel32.dll", EntryPoint = "VirtualQueryEx")]
+    public static extern nuint Native_VirtualQueryEx(nint hProcess, nuint lpAddress,
         out MEMORY_BASIC_INFORMATION64 lpBuffer, nuint dwLength);
 
 
-    [LibraryImport("kernel32.dll")]
-    public static partial void GetSystemInfo(out SYSTEM_INFO lpSystemInfo);
+    [DllImport("kernel32.dll")]
+    public static extern void GetSystemInfo(out SYSTEM_INFO lpSystemInfo);
 #endif
 
-    [LibraryImport("kernel32.dll")]
-    public static partial nint OpenThread(ThreadAccess dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, uint dwThreadId);
+    [DllImport("kernel32.dll")]
+    public static extern nint OpenThread(ThreadAccess dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, uint dwThreadId);
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    public static partial int SuspendThread(nint hThread);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern int SuspendThread(nint hThread);
 
-    [LibraryImport("kernel32.dll")]
-    internal static partial int ResumeThread(nint hThread);
+    [DllImport("kernel32.dll")]
+    internal static extern int ResumeThread(nint hThread);
 
-    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool WriteProcessMemory(
+    public static extern bool WriteProcessMemory(
         nint hProcess,
         nuint lpBaseAddress,
         string lpBuffer,
@@ -59,42 +59,42 @@ public static partial class Imps
         uint nSize,
         string lpFileName);
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool VirtualFreeEx(
+    public static extern bool VirtualFreeEx(
         nint hProcess,
         nuint lpAddress,
         nuint dwSize,
         uint dwFreeType
     );
 
-    [LibraryImport("kernel32.dll")]
+    [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, [MarshalAs(UnmanagedType.LPArray)] out byte[] lpBuffer,
+    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, [MarshalAs(UnmanagedType.LPArray)] out byte[] lpBuffer,
         nuint nSize, nint lpNumberOfBytesRead);
 
-    [LibraryImport("kernel32.dll")]
+    [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, out byte lpBuffer,
+    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, out byte lpBuffer,
         nuint nSize, nint lpNumberOfBytesRead);
 
-    [LibraryImport("kernel32.dll")]
+    [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, out short lpBuffer,
+    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, out short lpBuffer,
         nuint nSize, nint lpNumberOfBytesRead);
 
-    [LibraryImport("kernel32.dll")]
+    [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, long lpBuffer, nuint nSize,
+    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, long lpBuffer, nuint nSize,
         ulong lpNumberOfBytesRead);
 
-    [LibraryImport("kernel32.dll")]
+    [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, nint lpBuffer, nuint nSize,
+    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, nint lpBuffer, nuint nSize,
         out ulong lpNumberOfBytesRead);
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    public static partial nuint VirtualAllocEx(
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern nuint VirtualAllocEx(
         nint hProcess,
         nuint lpAddress,
         uint dwSize,
@@ -102,47 +102,47 @@ public static partial class Imps
         uint flProtect
     );
 
-    [LibraryImport("kernel32.dll")]
+    [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool VirtualProtectEx(nint hProcess, nuint lpAddress,
+    public static extern bool VirtualProtectEx(nint hProcess, nuint lpAddress,
         nint dwSize, MemoryProtection flNewProtect, out MemoryProtection lpflOldProtect);
 
-    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
-    public static partial nuint GetProcAddress(
+    [DllImport("kernel32.dll")]
+    public static extern nuint GetProcAddress(
         nint hModule,
         string procName
     );
 
-    [LibraryImport("kernel32.dll")]
-    internal static partial int CloseHandle(
+    [DllImport("kernel32.dll")]
+    internal static extern int CloseHandle(
         nint hObject
     );
 
-    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
-    public static partial nint GetModuleHandle(
+    [DllImport("kernel32.dll")]
+    public static extern nint GetModuleHandle(
         string lpModuleName
     );
 
-    [LibraryImport("kernel32", SetLastError = true)]
-    internal static partial int WaitForSingleObject(
+    [DllImport("kernel32", SetLastError = true)]
+    internal static extern int WaitForSingleObject(
         nint handle,
         int milliseconds
     );
 
-    [LibraryImport("kernel32.dll")]
+    [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, byte[] lpBuffer, nuint nSize,
+    public static extern bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, byte[] lpBuffer, nuint nSize,
         nint lpNumberOfBytesWritten);
 
-    [LibraryImport("kernel32.dll")]
+    [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, long lpBuffer, nuint nSize,
+    public static extern bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, long lpBuffer, nuint nSize,
         nint lpNumberOfBytesWritten);
 
     // Added to avoid casting to UIntPtr
 
-    [LibraryImport("kernel32")]
-    public static partial nint CreateRemoteThread(
+    [DllImport("kernel32")]
+    public static extern nint CreateRemoteThread(
         nint hProcess,
         nint lpThreadAttributes,
         uint dwStackSize,
@@ -152,9 +152,9 @@ public static partial class Imps
         out nint lpThreadId
     );
 
-    [LibraryImport("kernel32")]
+    [DllImport("kernel32")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool IsWow64Process(nint hProcess, [MarshalAs(UnmanagedType.Bool)] out bool lpSystemInfo);
+    public static extern bool IsWow64Process(nint hProcess, [MarshalAs(UnmanagedType.Bool)] out bool lpSystemInfo);
 
     /*
      typedef NTSTATUS (WINAPI *LPFUN_NtCreateThreadEx)
@@ -172,8 +172,8 @@ public static partial class Imps
           OUT LPVOID lpBytesBuffer
         );
      */
-    [LibraryImport("ntdll.dll", SetLastError = true)]
-    internal static partial NTSTATUS NtCreateThreadEx(out nint hProcess, AccessMask desiredAccess,
+    [DllImport("ntdll.dll", SetLastError = true)]
+    internal static extern NTSTATUS NtCreateThreadEx(out nint hProcess, AccessMask desiredAccess,
         nint objectAttributes, nuint processHandle, nint startAddress, nint parameter,
         ThreadCreationFlags inCreateSuspended, int stackZeroBits, int sizeOfStack, int maximumStackSize,
         nint attributeList);
@@ -309,8 +309,8 @@ public static partial class Imps
         WriteCombineModifierFlag = 0x400
     }
 
-    [LibraryImport("ntdll.dll", SetLastError = true)]
-    internal static partial int NtQueryInformationThread(
+    [DllImport("ntdll.dll", SetLastError = true)]
+    internal static extern int NtQueryInformationThread(
         nint threadHandle,
         ThreadInfoClass threadInformationClass,
         nint threadInformation,
