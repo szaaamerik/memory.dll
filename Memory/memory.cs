@@ -684,8 +684,8 @@ public partial class Mem
     /// <remarks>Please ensure that you use the proper replaceCount
     /// if you replace halfway in an instruction you may cause bad things</remarks>
     /// <returns>The address of the newly allocated memory</returns>
-    public nuint CreateTrampoline(string address, byte[] newBytes, int replaceCount, int size = 0x1000, byte[] varBytes = null!,
-        int varOffset = 0, bool makeTrampoline = true)
+    public nuint CreateTrampoline(string address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
     {
         if (replaceCount < 5)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -743,8 +743,8 @@ public partial class Mem
         return caveAddress;
     }
 
-    public nuint CreateFarTrampoline(string address, byte[] newBytes, int replaceCount, int size = 0x1000, byte[] varBytes = null!,
-        int varOffset = 0, bool makeTrampoline = true)
+    public nuint CreateFarTrampoline(string address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
     {
         if (replaceCount < 14)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -895,8 +895,8 @@ public partial class Mem
         return caveAddress;
     }
 
-    public nuint CreateFarTrampoline(nuint address, string code, byte[] newBytes, int replaceCount,
-        int size = 0x1000, bool makeTrampoline = true)
+    public nuint CreateFarTrampoline(nuint address, string code, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
     {
         if (replaceCount < 14)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -935,6 +935,9 @@ public partial class Mem
         WriteArrayMemory(caveAddress, caveBytes);
         if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
 
+        if (varBytes != null!)
+            WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
+        
         return caveAddress;
     }
 
