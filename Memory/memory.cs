@@ -557,7 +557,7 @@ public partial class Mem
                 for (int i = 1; i < additions.Length; i++)
                     base1 += nuint.Parse(additions[i], NumberStyles.HexNumber);
         }
-        else if (!int.TryParse(offsets[0].Split('+')[0], out _)) //this is so genius
+        else if (!nuint.TryParse(offsets[0].Split('+')[0], NumberStyles.HexNumber, null, out _)) //this is so genius
         {
             string[] additions = offsets[0].Split('+');
             base1 = (nuint)GetModuleAddressByName(additions[0]).ToInt64();
@@ -671,8 +671,6 @@ public partial class Mem
         return true;
     }
 
-#if WINXP
-#else
     /// <summary>
     /// Creates a trampoline to run extra code in another process.
     /// </summary>
@@ -681,11 +679,13 @@ public partial class Mem
     /// <param name="replaceCount">The number of bytes to replace with a jmp and nops</param>
     /// <param name="size">The size of the allocated region</param>
     /// <param name="makeTrampoline">Whether or not to create the jump for the trampoline</param>
+    /// <param name="varBytes">Extra bytes to put after the code. Usually used for variables.</param>
+    /// <param name="varOffset">How far after the code to put the varBytes.</param>
     /// <remarks>Please ensure that you use the proper replaceCount
     /// if you replace halfway in an instruction you may cause bad things</remarks>
     /// <returns>The address of the newly allocated memory</returns>
-    public nuint CreateTrampoline(string address, byte[] newBytes, int replaceCount, int size = 0x1000,
-        bool makeTrampoline = true)
+    public nuint CreateTrampoline(string address, byte[] newBytes, int replaceCount, int size = 0x1000, byte[] varBytes = null!,
+        int varOffset = 0, bool makeTrampoline = true)
     {
         if (replaceCount < 5)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -736,12 +736,15 @@ public partial class Mem
         WriteArrayMemory(caveAddress, caveBytes);
 
         if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
+        
+        if (varBytes != null!)
+            WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
 
         return caveAddress;
     }
 
-    public nuint CreateFarTrampoline(string address, byte[] newBytes, int replaceCount, int size = 0x1000,
-        bool makeTrampoline = true)
+    public nuint CreateFarTrampoline(string address, byte[] newBytes, int replaceCount, int size = 0x1000, byte[] varBytes = null!,
+        int varOffset = 0, bool makeTrampoline = true)
     {
         if (replaceCount < 14)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -780,6 +783,9 @@ public partial class Mem
         WriteArrayMemory(caveAddress, caveBytes);
 
         if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
+        
+        if (varBytes != null!)
+            WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
 
         return caveAddress;
     }
@@ -830,8 +836,8 @@ public partial class Mem
         return caveAddress;
     }
 
-    public nuint CreateTrampoline(nuint address, string code, byte[] newBytes, int replaceCount,
-        int size = 0x1000, bool makeTrampoline = true)
+    public nuint CreateTrampoline(nuint address, string code, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
     {
         if (replaceCount < 5)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -882,6 +888,9 @@ public partial class Mem
         WriteArrayMemory(caveAddress, caveBytes);
 
         if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
+        
+        if (varBytes != null!)
+            WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
 
         return caveAddress;
     }
@@ -1196,7 +1205,6 @@ public partial class Mem
 
         return ret;
     }
-#endif
 
     public static void SuspendProcess(int pid)
     {
@@ -1238,13 +1246,10 @@ public partial class Mem
         }
     }
 
-#if WINXP
-#else
     public static async Task PutTaskDelay(int delay)
     {
         await Task.Delay(delay);
     }
-#endif
 
     public static void AppendAllBytes(string path, byte[] bytes)
     {
