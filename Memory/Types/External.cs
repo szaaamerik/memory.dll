@@ -54,8 +54,11 @@ public readonly struct External<T>
         }
     }
 
-    public External(nuint address, string offsets = "") =>
+    public External(nuint address, string offsets = "", Mem m = null)
+    {
+        _m = m ?? Mem.DefaultInstance;
         Address = offsets == "" ? address : _m.Get64BitCode(address + offsets);
+    }
 
 
     #region Operator overloads

@@ -39,7 +39,7 @@ public class Trampoline : MemoryObject
 
     public Trampoline(string address, byte[] ogBytes, byte[] newBytes, int replaceCount,
         Mem.TrampolineType trampolineType, byte[] varBytes = null,
-        string sig = "", Action<nuint> mutate = null) : base(address)
+        string sig = "", Action<nuint> mutate = null, Mem m = null) : base(address, "", m)
     {
         _originalBytes = ogBytes;
         _signature = sig;
