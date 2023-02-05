@@ -1,7 +1,7 @@
 ﻿using System.Linq;
 using Memory.Types;
 
-namespace Memory;
+namespace Memory.Types;
 
 public class Instruction : MemoryObject
 {

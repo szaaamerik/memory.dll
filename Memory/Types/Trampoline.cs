@@ -2,7 +2,7 @@
 using System.Linq;
 using Memory.Types;
 
-namespace Memory;
+namespace Memory.Types;
 
 public class Trampoline : MemoryObject
 {
