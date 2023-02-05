@@ -18,6 +18,7 @@ namespace Memory;
 /// </summary>
 public partial class Mem
 {
+    public static Mem DefaultInstance { get; private set; }
     public Proc MProc = new();
 
     public nuint VirtualQueryEx(nint hProcess, nuint lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer)
@@ -164,6 +165,11 @@ public partial class Mem
     {
         return OpenProcess(pid, out string _);
     }
+
+    /// <summary>
+    /// Set the default instance of the memory class.
+    /// </summary>
+    public void MakeDefault() => DefaultInstance = this;
 
     /// <summary>
     /// Get the process ID number by process name.
