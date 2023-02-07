@@ -1,5 +1,4 @@
 ﻿using System.Linq;
-using Memory.Types;
 
 namespace Memory.Types;
 
@@ -11,7 +10,7 @@ public class Instruction : MemoryObject
 
     public bool IsPatched =>
         !M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length)
-        .SequenceEqual(_originalBytes);
+            .SequenceEqual(_originalBytes);
 
     public Instruction(string address, string offsets, byte[] ogBytes, byte[] newBytes = null, bool toggleWithRet = false, string sig = "", Mem m = null)
         : base(address, offsets, m)

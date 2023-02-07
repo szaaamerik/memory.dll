@@ -1,16 +1,15 @@
 ﻿using System;
 using System.Linq;
-using Memory.Types;
 
 namespace Memory.Types;
 
-public class Trampoline : MemoryObject
+public class Detour : MemoryObject
 {
     private readonly byte[] _originalBytes, _newBytes;
     private string _signature;
     public readonly nuint Allocated;
 
-    public Trampoline(string address, byte[] ogBytes, byte[] newBytes, int replaceCount, byte[] varBytes = null,
+    public Detour(string address, byte[] ogBytes, byte[] newBytes, int replaceCount, byte[] varBytes = null,
         string sig = "", Action<nuint> mutate = null, Mem m = null) : base(address, "", m)
     {
         _originalBytes = ogBytes;
@@ -22,23 +21,23 @@ public class Trampoline : MemoryObject
         Allocated = replaceCount switch
         {
             < 5 => throw new("replaceCount must be at least 5"),
-            < 14 => M.CreateTrampoline(address, newBytes, replaceCount, varBytes, makeTrampoline: false),
-            < 16 => M.CreateFarTrampoline(address, newBytes, replaceCount, varBytes, makeTrampoline: false),
-            _ => M.CreateCallTrampoline(address, newBytes, replaceCount, varBytes, 4, makeTrampoline: false)
+            < 14 => M.CreateDetour(address, newBytes, replaceCount, varBytes, makeDetour: false),
+            < 16 => M.CreateFarDetour(address, newBytes, replaceCount, varBytes, makeDetour: false),
+            _ => M.CreateCallDetour(address, newBytes, replaceCount, varBytes, 4, makeDetour: false)
         };
-        _newBytes = M.CalculateTrampoline(address, Allocated, replaceCount switch
+        _newBytes = M.CalculateDetour(address, Allocated, replaceCount switch
         {
             < 5 => throw new("replaceCount must be at least 5"),
-            < 14 => Mem.TrampolineType.Jump,
-            < 16 => Mem.TrampolineType.JumpFar,
-            _ => Mem.TrampolineType.Call
+            < 14 => Mem.DetourType.Jump,
+            < 16 => Mem.DetourType.JumpFar,
+            _ => Mem.DetourType.Call
         }, replaceCount);
 
         mutate?.Invoke(Allocated);
     }
 
-    public Trampoline(string address, byte[] ogBytes, byte[] newBytes, int replaceCount,
-        Mem.TrampolineType trampolineType, byte[] varBytes = null,
+    public Detour(string address, byte[] ogBytes, byte[] newBytes, int replaceCount,
+        Mem.DetourType detourType, byte[] varBytes = null,
         string sig = "", Action<nuint> mutate = null, Mem m = null) : base(address, "", m)
     {
         _originalBytes = ogBytes;
@@ -47,14 +46,14 @@ public class Trampoline : MemoryObject
         if (_originalBytes.Length != replaceCount)
             throw new("Original bytes length should be equal to the replace count");
 
-        Allocated = trampolineType switch
+        Allocated = detourType switch
         {
-            Mem.TrampolineType.Jump => M.CreateTrampoline(address, newBytes, replaceCount, varBytes,  makeTrampoline: false),
-            Mem.TrampolineType.JumpFar => M.CreateFarTrampoline(address, newBytes, replaceCount, varBytes, makeTrampoline: false),
-            Mem.TrampolineType.Call => M.CreateCallTrampoline(address, newBytes, replaceCount, varBytes, 4, makeTrampoline: false),
-            _ => throw new("Invalid trampoline type")
+            Mem.DetourType.Jump => M.CreateDetour(address, newBytes, replaceCount, varBytes,  makeDetour: false),
+            Mem.DetourType.JumpFar => M.CreateFarDetour(address, newBytes, replaceCount, varBytes, makeDetour: false),
+            Mem.DetourType.Call => M.CreateCallDetour(address, newBytes, replaceCount, varBytes, 4, makeDetour: false),
+            _ => throw new("Invalid detour type")
         };
-        _newBytes = M.CalculateTrampoline(address, Allocated, trampolineType, replaceCount);
+        _newBytes = M.CalculateDetour(address, Allocated, detourType, replaceCount);
 
         mutate?.Invoke(Allocated);
     }

@@ -678,20 +678,20 @@ public partial class Mem
     }
 
     /// <summary>
-    /// Creates a trampoline to run extra code in another process.
+    /// Creates a detour to run extra code in another process.
     /// </summary>
-    /// <param name="address">Address to create the trampoline</param>
+    /// <param name="address">Address to create the detour</param>
     /// <param name="newBytes">The opcodes to write in the code cave</param>
     /// <param name="replaceCount">The number of bytes to replace with a jmp and nops</param>
     /// <param name="size">The size of the allocated region</param>
-    /// <param name="makeTrampoline">Whether or not to create the jump for the trampoline</param>
+    /// <param name="makeDetour">Whether or not to create the jump for the detour</param>
     /// <param name="varBytes">Extra bytes to put after the code. Usually used for variables.</param>
     /// <param name="varOffset">How far after the code to put the varBytes.</param>
     /// <remarks>Please ensure that you use the proper replaceCount
     /// if you replace halfway in an instruction you may cause bad things</remarks>
     /// <returns>The address of the newly allocated memory</returns>
-    public nuint CreateTrampoline(string address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
-        int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
+    public nuint CreateDetour(string address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, int size = 0x1000, bool makeDetour = true)
     {
         if (replaceCount < 5)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -741,7 +741,7 @@ public partial class Mem
 
         WriteArrayMemory(caveAddress, caveBytes);
 
-        if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
+        if (makeDetour) WriteArrayMemory(theCode, jmpBytes);
         
         if (varBytes != null!)
             WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
@@ -749,8 +749,8 @@ public partial class Mem
         return caveAddress;
     }
 
-    public nuint CreateFarTrampoline(string address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
-        int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
+    public nuint CreateFarDetour(string address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, int size = 0x1000, bool makeDetour = true)
     {
         if (replaceCount < 14)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -788,7 +788,7 @@ public partial class Mem
 
         WriteArrayMemory(caveAddress, caveBytes);
 
-        if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
+        if (makeDetour) WriteArrayMemory(theCode, jmpBytes);
         
         if (varBytes != null!)
             WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
@@ -796,8 +796,8 @@ public partial class Mem
         return caveAddress;
     }
 
-    public nuint CreateCallTrampoline(string address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
-        int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
+    public nuint CreateCallDetour(string address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, int size = 0x1000, bool makeDetour = true)
     {
         if (replaceCount < 16)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -834,7 +834,7 @@ public partial class Mem
         caveBytes[newBytes.Length] = 0xC3;
 
         WriteArrayMemory(caveAddress, caveBytes);
-        if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
+        if (makeDetour) WriteArrayMemory(theCode, jmpBytes);
 
         if (varBytes != null!)
             WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
@@ -842,8 +842,8 @@ public partial class Mem
         return caveAddress;
     }
 
-    public nuint CreateTrampoline(nuint address, string code, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
-        int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
+    public nuint CreateDetour(nuint address, string code, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, int size = 0x1000, bool makeDetour = true)
     {
         if (replaceCount < 5)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -893,7 +893,7 @@ public partial class Mem
 
         WriteArrayMemory(caveAddress, caveBytes);
 
-        if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
+        if (makeDetour) WriteArrayMemory(theCode, jmpBytes);
         
         if (varBytes != null!)
             WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
@@ -901,8 +901,8 @@ public partial class Mem
         return caveAddress;
     }
 
-    public nuint CreateFarTrampoline(nuint address, string code, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
-        int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
+    public nuint CreateFarDetour(nuint address, string code, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, int size = 0x1000, bool makeDetour = true)
     {
         if (replaceCount < 14)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -939,7 +939,7 @@ public partial class Mem
         BitConverter.GetBytes((long)theCode + jmpBytes.Length).CopyTo(caveBytes, newBytes.Length + 6);
 
         WriteArrayMemory(caveAddress, caveBytes);
-        if (makeTrampoline) WriteArrayMemory(address, jmpBytes);
+        if (makeDetour) WriteArrayMemory(address, jmpBytes);
 
         if (varBytes != null!)
             WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
@@ -947,8 +947,8 @@ public partial class Mem
         return caveAddress;
     }
 
-    public nuint CreateCallTrampoline(nuint address, string code, byte[] newBytes, int replaceCount,
-        byte[] varBytes = null!, int varOffset = 0, int size = 0x1000, bool makeTrampoline = true)
+    public nuint CreateCallDetour(nuint address, string code, byte[] newBytes, int replaceCount,
+        byte[] varBytes = null!, int varOffset = 0, int size = 0x1000, bool makeDetour = true)
     {
         if (replaceCount < 16)
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
@@ -985,7 +985,7 @@ public partial class Mem
         caveBytes[newBytes.Length] = 0xC3;
 
         WriteArrayMemory(caveAddress, caveBytes);
-        if (makeTrampoline) WriteArrayMemory(theCode, jmpBytes);
+        if (makeDetour) WriteArrayMemory(theCode, jmpBytes);
 
         if (varBytes != null!)
             WriteArrayMemory(caveAddress + (nuint)caveBytes.Length + (nuint)varOffset, varBytes);
@@ -993,7 +993,7 @@ public partial class Mem
         return caveAddress;
     }
 
-    public enum TrampolineType
+    public enum DetourType
     {
         Jump,
         JumpFar,
@@ -1002,37 +1002,37 @@ public partial class Mem
 
     
     /// <summary>
-    /// Calculates a trampoline from an address to a target.
+    /// Calculates a detour from an address to a target.
     /// </summary>
     /// <param name="address">The address to jump from.</param>
     /// <param name="target">The address to jump to.</param>
-    /// <param name="type">The type of trampoline to create.</param>
+    /// <param name="type">The type of deetour to create.</param>
     /// <param name="replaceCount">The number of bytes to replace.</param>
-    /// <returns>A byte array containing the shellcode of trampoline.</returns>
-    /// <exception cref="Exception">Thrown if the trampoline type is not supported, which should never happen.</exception>
-    public static byte[] CalculateTrampoline(nuint address, nuint target, TrampolineType type, int replaceCount)
+    /// <returns>A byte array containing the shellcode of detour.</returns>
+    /// <exception cref="Exception">Thrown if the detour type is not supported, which should never happen.</exception>
+    public static byte[] CalculateDetour(nuint address, nuint target, DetourType type, int replaceCount)
     {
-        byte[] trampolineBytes = new byte[replaceCount];
+        byte[] detourBytes = new byte[replaceCount];
 
         switch (type)
         {
-            case TrampolineType.Jump:
-                trampolineBytes[0] = 0xE9;
-                BitConverter.GetBytes((int)((long)target - (long)address - 5)).CopyTo(trampolineBytes, 1);
+            case DetourType.Jump:
+                detourBytes[0] = 0xE9;
+                BitConverter.GetBytes((int)((long)target - (long)address - 5)).CopyTo(detourBytes, 1);
                 break;
-            case TrampolineType.JumpFar:
-                trampolineBytes[0] = 0xFF;
-                trampolineBytes[1] = 0x25;
-                BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 6);
+            case DetourType.JumpFar:
+                detourBytes[0] = 0xFF;
+                detourBytes[1] = 0x25;
+                BitConverter.GetBytes((long)target).CopyTo(detourBytes, 6);
                 break;
-            case TrampolineType.Call:
-                trampolineBytes[0] = 0xFF;
-                trampolineBytes[1] = 0x15;
-                trampolineBytes[2] = 0x02;
+            case DetourType.Call:
+                detourBytes[0] = 0xFF;
+                detourBytes[1] = 0x15;
+                detourBytes[2] = 0x02;
                 //00 00 00
-                trampolineBytes[6] = 0xEB;
-                trampolineBytes[7] = 0x08;
-                BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 8);
+                detourBytes[6] = 0xEB;
+                detourBytes[7] = 0x08;
+                BitConverter.GetBytes((long)target).CopyTo(detourBytes, 8);
                 break;
             default:
                 throw new("Achievement unlocked: How Did We Get Here?");
@@ -1041,53 +1041,53 @@ public partial class Mem
         // Fill the rest with nops
         for (int i = type switch
              {
-                 TrampolineType.Jump => 5,
-                 TrampolineType.JumpFar => 14,
-                 TrampolineType.Call => 16,
+                 DetourType.Jump => 5,
+                 DetourType.JumpFar => 14,
+                 DetourType.Call => 16,
                  _ => throw new("Achievement unlocked: How Did We Get Here?")
              };
-             i < trampolineBytes.Length;
+             i < detourBytes.Length;
              i++)
         {
-            trampolineBytes[i] = 0x90;
+            detourBytes[i] = 0x90;
         }
 
-        return trampolineBytes;
+        return detourBytes;
     }
 
     /// <summary>
-    /// Calculates a trampoline from an address to a target.
+    /// Calculates a detour from an address to a target.
     /// </summary>
     /// <param name="address">The address to jump from.</param>
     /// <param name="target">The address to jump to.</param>
-    /// <param name="type">The type of trampoline to create.</param>
+    /// <param name="type">The type of detour to create.</param>
     /// <param name="replaceCount">The number of bytes to replace.</param>
-    /// <returns>A byte array containing the shellcode of trampoline.</returns>
-    /// <exception cref="Exception">Thrown if the trampoline type is not supported, which should never happen.</exception>
-    public byte[] CalculateTrampoline(string address, nuint target, TrampolineType type, int replaceCount)
+    /// <returns>A byte array containing the shellcode of detour.</returns>
+    /// <exception cref="Exception">Thrown if the detour type is not supported, which should never happen.</exception>
+    public byte[] CalculateDetour(string address, nuint target, DetourType type, int replaceCount)
     {
-        byte[] trampolineBytes = new byte[replaceCount];
+        byte[] detourBytes = new byte[replaceCount];
 
         nuint theAddress = FollowMultiLevelPointer(address);
         switch (type)
         {
-            case TrampolineType.Jump:
-                trampolineBytes[0] = 0xE9;
-                BitConverter.GetBytes((int)((long)target - (long)theAddress - 5)).CopyTo(trampolineBytes, 1);
+            case DetourType.Jump:
+                detourBytes[0] = 0xE9;
+                BitConverter.GetBytes((int)((long)target - (long)theAddress - 5)).CopyTo(detourBytes, 1);
                 break;
-            case TrampolineType.JumpFar:
-                trampolineBytes[0] = 0xFF;
-                trampolineBytes[1] = 0x25;
-                BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 6);
+            case DetourType.JumpFar:
+                detourBytes[0] = 0xFF;
+                detourBytes[1] = 0x25;
+                BitConverter.GetBytes((long)target).CopyTo(detourBytes, 6);
                 break;
-            case TrampolineType.Call:
-                trampolineBytes[0] = 0xFF;
-                trampolineBytes[1] = 0x15;
-                trampolineBytes[2] = 0x02;
+            case DetourType.Call:
+                detourBytes[0] = 0xFF;
+                detourBytes[1] = 0x15;
+                detourBytes[2] = 0x02;
                 //00 00 00
-                trampolineBytes[6] = 0xEB;
-                trampolineBytes[7] = 0x08;
-                BitConverter.GetBytes((long)target).CopyTo(trampolineBytes, 8);
+                detourBytes[6] = 0xEB;
+                detourBytes[7] = 0x08;
+                BitConverter.GetBytes((long)target).CopyTo(detourBytes, 8);
                 break;
             default:
                 throw new("Achievement unlocked: How Did We Get Here?");
@@ -1096,18 +1096,18 @@ public partial class Mem
         // Fill the rest with nops
         for (int i = type switch
              {
-                 TrampolineType.Jump => 5,
-                 TrampolineType.JumpFar => 14,
-                 TrampolineType.Call => 16,
+                 DetourType.Jump => 5,
+                 DetourType.JumpFar => 14,
+                 DetourType.Call => 16,
                  _ => throw new("Achievement unlocked: How Did We Get Here?")
              };
-             i < trampolineBytes.Length;
+             i < detourBytes.Length;
              i++)
         {
-            trampolineBytes[i] = 0x90;
+            detourBytes[i] = 0x90;
         }
 
-        return trampolineBytes;
+        return detourBytes;
     }
 
     private nuint FindFreeBlockForRegion(nuint baseAddress, uint size)

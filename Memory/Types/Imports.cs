@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
+
 // ReSharper disable UnassignedField.Global
 // ReSharper disable UnusedMember.Local
 // ReSharper disable UnusedMethodReturnValue.Global
 // ReSharper disable UnusedMember.Global
 
 namespace Memory;
-public static partial class Imps
+public static class Imps
 {
     [DllImport("kernel32.dll")]
     public static extern nint OpenProcess(
