@@ -6,8 +6,8 @@ namespace Memory.Types;
 public class MemoryObject : IEquatable<MemoryObject>
 {
     protected readonly Mem M;
-    public string Address;
-    public readonly nuint AddressPtr;
+    public readonly string Address;
+    public nuint AddressPtr;
 
     protected MemoryObject(string address, string offsets = "", Mem m = null)
     {
@@ -15,6 +15,8 @@ public class MemoryObject : IEquatable<MemoryObject>
         Address = (address + offsets).TrimEnd(',').TrimEnd('+');
         AddressPtr = M.Get64BitCode(Address);
     }
+    
+    public void UpdateAddress() => AddressPtr = M.Get64BitCode(Address);
 
     public override int GetHashCode() => HashCode.Combine(AddressPtr);
 

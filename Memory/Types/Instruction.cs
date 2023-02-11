@@ -6,6 +6,7 @@ public class Instruction : MemoryObject
 {
     private readonly byte[] _originalBytes, _newBytes, _nopBytes, _retBytes;
     private readonly bool _toggleWithRet;
+    private bool _hasBeenPatchedBefore;
     private readonly string _signature;
 
     public bool IsPatched =>
@@ -31,13 +32,17 @@ public class Instruction : MemoryObject
             _nopBytes[i] = 0x90;
     }
 
-    public void Nop() => M.WriteArrayMemory(Address, _nopBytes);
+    public void Nop()
+    {
+        M.WriteArrayMemory(AddressPtr, _nopBytes);
+        _hasBeenPatchedBefore = true;
+    }
 
-    public void Restore() => M.WriteArrayMemory(Address, _originalBytes);
+    public void Restore() => M.WriteArrayMemory(AddressPtr, _originalBytes);
 
-    public void Patch() => M.WriteArrayMemory(Address, _newBytes);
+    public void Patch() => M.WriteArrayMemory(AddressPtr, _newBytes);
 
-    public void Return() => M.WriteArrayMemory(Address, _retBytes);
+    public void Return() => M.WriteArrayMemory(AddressPtr, _retBytes);
 
     public void Toggle()
     {
@@ -58,5 +63,12 @@ public class Instruction : MemoryObject
                 Nop();
                 break;
         }
+    }
+    
+    public bool AreBytesAtAddressCorrect()
+    {
+        byte[] currentBytes = M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length);
+        return currentBytes.SequenceEqual(_originalBytes);
+        //TODO: Read from exe if it's been patched
     }
 }
