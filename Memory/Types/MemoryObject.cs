@@ -15,8 +15,6 @@ public class MemoryObject : IEquatable<MemoryObject>
         Address = (address + offsets).TrimEnd(',').TrimEnd('+');
         AddressPtr = M.Get64BitCode(Address);
     }
-    
-    public void UpdateAddress() => AddressPtr = M.Get64BitCode(Address);
 
     public override int GetHashCode() => HashCode.Combine(AddressPtr);
 

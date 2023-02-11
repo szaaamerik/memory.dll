@@ -86,6 +86,9 @@ public static class Imps
     [DllImport("kernel32.dll")]
     public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, nint lpBuffer, nuint nSize,
         out ulong lpNumberOfBytesRead);
+    
+    [DllImport("kernel32.dll")]
+    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, byte[] lpBuffer, int dwSize, int lpNumberOfBytesRead = 0);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern nuint VirtualAllocEx(

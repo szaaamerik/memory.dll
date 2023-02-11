@@ -18,7 +18,7 @@ public partial class Mem
     /// <param name="writable">Include writable addresses in scan</param>
     /// <param name="executable">Include executable addresses in scan</param>
     /// <returns>IEnumerable of all addresses found.</returns>
-    public Task<IEnumerable<long>> AoBScan(string search, bool writable = false, bool executable = true)
+    public Task<IEnumerable<nuint>> AoBScan(string search, bool writable = false, bool executable = true)
     {
         return AoBScan(0, long.MaxValue, search, writable, executable);
     }
@@ -31,7 +31,7 @@ public partial class Mem
     /// <param name="writable">Include writable addresses in scan</param>
     /// <param name="executable">Include executable addresses in scan</param>
     /// <returns>IEnumerable of all addresses found.</returns>
-    public Task<IEnumerable<long>> AoBScan(string search, bool readable, bool writable, bool executable)
+    public Task<IEnumerable<nuint>> AoBScan(string search, bool readable, bool writable, bool executable)
     {
         return AoBScan(0, long.MaxValue, search, readable, writable, executable, false);
     }
@@ -47,7 +47,7 @@ public partial class Mem
     /// <param name="executable">Include executable addresses in scan</param>
     /// <param name="mapped">Include mapped addresses in scan</param>
     /// <returns>IEnumerable of all addresses found.</returns>
-    public Task<IEnumerable<long>> AoBScan(long start, long end, string search, bool writable = false, bool executable = true, bool mapped = false)
+    public Task<IEnumerable<nuint>> AoBScan(long start, long end, string search, bool writable = false, bool executable = true, bool mapped = false)
     {
         // Not including read only memory was scan behavior prior.
         return AoBScan(start, end, search, false, writable, executable, mapped);
@@ -64,7 +64,7 @@ public partial class Mem
     /// <param name="executable">Include executable addresses in scan</param>
     /// <param name="mapped">Include mapped addresses in scan</param>
     /// <returns>IEnumerable of all addresses found.</returns>
-    public Task<IEnumerable<long>> AoBScan(long start, long end, string search, bool readable, bool writable, bool executable, bool mapped)
+    public Task<IEnumerable<nuint>> AoBScan(long start, long end, string search, bool readable, bool writable, bool executable, bool mapped)
     {
         return Task.Run(() =>
         {
@@ -184,14 +184,14 @@ public partial class Mem
                 memRegionList.Add(memRegion);
             }
 
-            ConcurrentBag<long> bagResult = new();
+            ConcurrentBag<nuint> bagResult = new();
 
             Parallel.ForEach(memRegionList,
                 (item, _, _) =>
                 {
-                    IEnumerable<long> compareResults = CompareScan(item, aobPattern, mask);
+                    IEnumerable<nuint> compareResults = CompareScan(item, aobPattern, mask);
 
-                    foreach (long result in compareResults)
+                    foreach (nuint result in compareResults)
                         bagResult.Add(result);
                 });
 
@@ -208,14 +208,14 @@ public partial class Mem
     /// <param name="end">ending address</param>
     /// <param name="search">array of bytes to search for</param>
     /// <returns>First address found</returns>
-    public async Task<long> AoBScan(string code, long end, string search)
+    public async Task<nuint> AoBScan(string code, long end, string search)
     {
-        long start = (long)FollowMultiLevelPointer(code).ToUInt64();
+        long start = (long)Get64BitCode(code).ToUInt64();
 
         return (await AoBScan(start, end, search, true, true, true, false)).FirstOrDefault();
     }
 
-    private IEnumerable<long> CompareScan(MemoryRegionResult item, byte[] aobPattern, byte[] mask)
+    private IEnumerable<nuint> CompareScan(MemoryRegionResult item, byte[] aobPattern, byte[] mask)
     {
         if (mask.Length != aobPattern.Length)
             throw new ArgumentException($"{nameof(aobPattern)}.Length != {nameof(mask)}.Length");
@@ -225,7 +225,7 @@ public partial class Mem
         ReadProcessMemory(MProc.Handle, item.CurrentBaseAddress, buffer, (nuint)item.RegionSize, out ulong bytesRead);
 
         int result = 0 - aobPattern.Length;
-        List<long> ret = new();
+        List<nuint> ret = new();
         unsafe
         {
             do
@@ -233,7 +233,7 @@ public partial class Mem
                 result = FindPattern((byte*)buffer.ToPointer(), (int)bytesRead, aobPattern, mask, result + aobPattern.Length);
 
                 if (result >= 0)
-                    ret.Add((long)item.CurrentBaseAddress + result);
+                    ret.Add(item.CurrentBaseAddress + (uint)result);
 
             } while (result != -1);
         }
