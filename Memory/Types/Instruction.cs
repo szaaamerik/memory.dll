@@ -37,6 +37,9 @@ public class Instruction : MemoryObject
             _nopBytes[i] = 0x90;
 
         _realOriginalBytes = M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length);
+        
+        if (AreBytesAtAddressCorrect()) return;
+
         if (signature != "")
             _signatureAddress = M.AoBScan(_signature).Result.FirstOrDefault();
     }
