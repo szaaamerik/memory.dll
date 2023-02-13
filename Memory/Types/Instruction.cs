@@ -73,36 +73,10 @@ public class Instruction : MemoryObject
 
     public bool AreBytesAtAddressCorrect() => _originalBytes.SequenceEqual(_realOriginalBytes);
 
-    public void UpdateSignatureAddress(bool myScanner)
+    public void UpdateSignatureAddress()
     {
-        if (myScanner)
-            _signatureAddress = MyScan(_signature).FirstOrDefault();
-
         _signatureAddress = M.AoBScan(_signature).Result.FirstOrDefault();
 
         AddressPtr = _signatureAddress;
-    }
-
-    private IEnumerable<nuint> MyScan(string signature)
-    {
-        byte[] sig = signature.Split(' ').Select(x => x == "?" ? (byte)0 : byte.Parse(x, NumberStyles.HexNumber)).ToArray();
-        bool[] mask = signature.Split(' ').Select(x => x == "?").ToArray();
-        byte[] bytes = new byte[M.MProc.Process.MainModule!.ModuleMemorySize];
-        Imps.ReadProcessMemory(M.MProc.Handle, (nuint)M.MProc.Process.MainModule.BaseAddress, bytes, bytes.Length);
-
-        for (int i = 0; i < bytes.Length; i++)
-        {
-            bool found = true;
-            
-            for (int j = 0; j < sig.Length; j++)
-            {
-                if (!mask[j] || bytes[i + j] == sig[j]) continue;
-                found = false;
-                break;
-            }
-
-            if (found)
-                yield return (nuint)i;
-        }
     }
 }
