@@ -280,7 +280,7 @@ public partial class Mem
         for (int i = 0; i < length; i++)
         {
             T result;
-            if (!ReadProcessMemory(MProc.Handle, addy, (long)&result, (nuint)size, 0))
+            if (!ReadProcessMemory(MProc.Handle, addy + (nuint)i, (long)&result, (nuint)size, 0))
                 result = new();
             results[i] = result;
         }
@@ -294,7 +294,7 @@ public partial class Mem
         for (int i = 0; i < length; i++)
         {
             T result;
-            if (!ReadProcessMemory(MProc.Handle, address, (long)&result, (nuint)size, 0))
+            if (!ReadProcessMemory(MProc.Handle, address + (nuint)i, (long)&result, (nuint)size, 0))
                 result = new();
             results[i] = result;
         }
