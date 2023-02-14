@@ -219,7 +219,7 @@ public partial class Mem
 
     public bool ChangeProtection(string code, MemoryProtection newProtection, out MemoryProtection oldProtection)
     {
-        nuint theCode = FollowMultiLevelPointer(code);
+        nuint theCode = Get64BitCode(code);
         if (theCode != nuint.Zero && MProc.Handle != nint.Zero)
             return VirtualProtectEx(MProc.Handle, theCode, MProc.Is64Bit ? 8 : 4, newProtection, out oldProtection);
         
@@ -231,7 +231,7 @@ public partial class Mem
         out MemoryProtection oldProtection)
     {
         nuint addy = code != ""
-            ? FollowMultiLevelPointer(address.ToString("X") + code)
+            ? Get64BitCode(address.ToString("X") + code)
             : address;
         if (addy != nuint.Zero
             && MProc.Handle != nint.Zero)
@@ -697,7 +697,7 @@ public partial class Mem
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        nuint theCode = FollowMultiLevelPointer(address);
+        nuint theCode = Get64BitCode(address);
 
         // if x64 we need to try to allocate near the address so we dont run into the +-2GB limit of the 0xE9 jmp
 
@@ -756,7 +756,7 @@ public partial class Mem
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        nuint theCode = FollowMultiLevelPointer(address);
+        nuint theCode = Get64BitCode(address);
 
         // We're using a 14-byte 0xFF jmp instruction now, meaning no matter what we won't run into a limit.
 
@@ -803,7 +803,7 @@ public partial class Mem
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        nuint theCode = FollowMultiLevelPointer(address);
+        nuint theCode = Get64BitCode(address);
 
         // This uses a 16-byte call instruction. Makes it easier to translate aob scripts that return at different places.
 
@@ -1068,7 +1068,7 @@ public partial class Mem
     {
         byte[] detourBytes = new byte[replaceCount];
 
-        nuint theAddress = FollowMultiLevelPointer(address);
+        nuint theAddress = Get64BitCode(address);
         switch (type)
         {
             case DetourType.Jump:

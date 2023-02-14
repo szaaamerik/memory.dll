@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,7 +41,7 @@ public partial class Mem
     {
         byte[] buf = new byte[1];
 
-        nuint theCode = FollowMultiLevelPointer(code);
+        nuint theCode = Get64BitCode(code);
 
         bool[] ret = new bool[8];
 
@@ -64,7 +66,7 @@ public partial class Mem
     {
         int size = Marshal.SizeOf<T>();
         T result;
-        nuint addy = FollowMultiLevelPointer(address);
+        nuint addy = Get64BitCode(address);
         if (!ReadProcessMemory(MProc.Handle, addy, (long)&result, (nuint)size, 0))
             result = default;
 
@@ -84,7 +86,7 @@ public partial class Mem
     {
         stringEncoding ??= Encoding.UTF8;
         byte[] memoryNormal = Array.Empty<byte>();
-        nuint addy = FollowMultiLevelPointer(address);
+        nuint addy = Get64BitCode(address);
 
         switch (stringEncoding.CodePage)
         {
@@ -178,7 +180,7 @@ public partial class Mem
     {
         stringEncoding ??= Encoding.UTF8;
         byte[] memoryNormal = new byte[length];
-        nuint addy = FollowMultiLevelPointer(address);
+        nuint addy = Get64BitCode(address);
 
         switch (stringEncoding.CodePage)
         {
@@ -275,14 +277,20 @@ public partial class Mem
     public unsafe T[] ReadArrayMemory<T>(string address, int length) where T : unmanaged
     {
         int size = Marshal.SizeOf<T>();
-        nuint addy = FollowMultiLevelPointer(address);
+        nuint addy = Get64BitCode(address);
         T[] results = new T[length];
-        for (int i = 0; i < length; i++)
+        /*for (int i = 0; i < length; i++)
         {
             T result;
             if (!ReadProcessMemory(MProc.Handle, addy + (nuint)i, (long)&result, (nuint)size, 0))
                 result = new();
             results[i] = result;
+        }*/
+        
+        fixed (T* resultsp = &results[0])
+        {
+            if (!ReadProcessMemory(MProc.Handle, addy, (long)resultsp, (nuint)(size * length), 0))
+                throw new($"ReadProcessMemory threw error code 0d{Marshal.GetLastWin32Error()} (0x{Marshal.GetLastWin32Error():X})");
         }
 
         return results;
@@ -291,20 +299,26 @@ public partial class Mem
     {
         int size = Marshal.SizeOf<T>();
         T[] results = new T[length];
-        for (int i = 0; i < length; i++)
+        /*for (int i = 0; i < length; i++)
         {
             T result;
             if (!ReadProcessMemory(MProc.Handle, address + (nuint)i, (long)&result, (nuint)size, 0))
                 result = new();
             results[i] = result;
+        }*/
+        
+        fixed (T* resultsp = &results[0])
+        {
+            if (!ReadProcessMemory(MProc.Handle, address, (long)resultsp, (nuint)(size * length), 0))
+                throw new($"ReadProcessMemory threw error code 0d{Marshal.GetLastWin32Error()} (0x{Marshal.GetLastWin32Error():X})");
         }
-
+        
         return results;
     }
         
     public T ReadAnyMemory<T>(string address)
     {
-        nuint addy = FollowMultiLevelPointer(address);
+        nuint addy = Get64BitCode(address);
         Type t = typeof(T);
         return true switch
         {

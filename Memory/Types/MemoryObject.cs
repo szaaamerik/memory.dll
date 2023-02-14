@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 
 namespace Memory.Types;
@@ -14,6 +15,20 @@ public class MemoryObject : IEquatable<MemoryObject>
         M = m ?? Mem.DefaultInstance;
         Address = (address + offsets).TrimEnd(',').TrimEnd('+');
         AddressPtr = M.Get64BitCode(Address);
+    }
+    protected MemoryObject(nuint address, string offsets = "", Mem m = null)
+    {
+        M = m ?? Mem.DefaultInstance;
+        if (offsets == "")
+        {
+            Address = address.ToString("X");
+            AddressPtr = address;
+        }
+        else
+        {
+            Address = (address.ToString("X") + offsets).TrimEnd(',').TrimEnd('+');
+            AddressPtr = M.Get64BitCode(Address);
+        }
     }
 
     public override int GetHashCode() => HashCode.Combine(AddressPtr);
