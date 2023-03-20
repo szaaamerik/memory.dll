@@ -997,7 +997,8 @@ public partial class Mem
     {
         Jump,
         JumpFar,
-        Call
+        Call,
+        Unspecified
     }
 
     

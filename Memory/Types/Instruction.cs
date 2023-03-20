@@ -1,8 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Linq;
+﻿using System.Linq;
 
 namespace Memory.Types;
 
@@ -11,6 +7,7 @@ public class Instruction : MemoryObject
     private readonly byte[] _originalBytes, _realOriginalBytes, _newBytes, _nopBytes, _retBytes;
     private readonly bool _toggleWithRet;
     private readonly string _signature;
+    private readonly int _signatureOffset;
     private nuint _signatureAddress;
 
     public bool IsPatched =>
@@ -18,13 +15,15 @@ public class Instruction : MemoryObject
             .SequenceEqual(_originalBytes);
 
     public Instruction(string address, string offsets, byte[] originalBytes, byte[] newBytes = null,
-        bool toggleWithRet = false, string signature = "", Mem m = null)
+        bool toggleWithRet = false, string signature = "", int signatureOffset = 0, Mem m = null)
         : base(address, offsets, m)
     {
         _originalBytes = originalBytes;
         _newBytes = newBytes;
         _toggleWithRet = toggleWithRet;
         _signature = signature;
+        _signatureOffset = signatureOffset;
+        _realOriginalBytes = M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length);
 
 
         _retBytes = new byte[_originalBytes.Length];
@@ -36,12 +35,15 @@ public class Instruction : MemoryObject
         for (int i = 0; i < _nopBytes.Length; i++)
             _nopBytes[i] = 0x90;
 
-        _realOriginalBytes = M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length);
-        
-        if (AreBytesAtAddressCorrect()) return;
+        if (BytesAtAddressAreCorrect || signature == "") return;
 
-        if (signature != "")
-            _signatureAddress = M.AoBScan(_signature).Result.FirstOrDefault();
+        _signatureAddress = M.AoBScan(_signature).Result.FirstOrDefault();
+        if (signatureOffset > 0)
+            _signatureAddress += (uint) signatureOffset;
+        else
+            _signatureAddress -= (uint) -signatureOffset; //i think this is necessary because it's unsigned, but i'm not sure and too lazy to test
+        
+        UpdateAddressUsingSignature();
     }
 
     public void Nop() => M.WriteArrayMemory(AddressPtr, _nopBytes);
@@ -74,11 +76,15 @@ public class Instruction : MemoryObject
         }
     }
 
-    public bool AreBytesAtAddressCorrect() => _originalBytes.SequenceEqual(_realOriginalBytes);
+    public bool BytesAtAddressAreCorrect => _originalBytes.SequenceEqual(_realOriginalBytes);
 
-    public void UpdateSignatureAddress()
+    public void UpdateAddressUsingSignature()
     {
         _signatureAddress = M.AoBScan(_signature).Result.FirstOrDefault();
+        if (_signatureOffset > 0)
+            _signatureAddress += (uint) _signatureOffset;
+        else
+            _signatureAddress -= (uint) _signatureOffset; //i think this is necessary because it's unsigned, but i'm not sure and too lazy to test
 
         AddressPtr = _signatureAddress;
     }
