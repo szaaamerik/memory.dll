@@ -37,7 +37,7 @@ public class Instruction : MemoryObject
 
         if (BytesAtAddressAreCorrect || signature == "") return;
 
-        _signatureAddress = M.AoBScan(_signature).Result.FirstOrDefault();
+        _signatureAddress = M.ScanForSig(_signature).FirstOrDefault();
         if (signatureOffset > 0)
             _signatureAddress += (uint) signatureOffset;
         else
@@ -80,7 +80,7 @@ public class Instruction : MemoryObject
 
     public void UpdateAddressUsingSignature()
     {
-        _signatureAddress = M.AoBScan(_signature).Result.FirstOrDefault();
+        _signatureAddress = M.ScanForSig(_signature, resultLimit: 1).FirstOrDefault();
         if (_signatureOffset > 0)
             _signatureAddress += (uint) _signatureOffset;
         else
