@@ -8,13 +8,17 @@ Some changes from the original:
    * Fun types like `External<T>`, `Instruction`, and `Detour` to make your life easier
    * More "code cave" (detour) types (5 byte jmp near, 14 byte jmp far, and 16 byte call far)
    * Programmed in .NET 7
-TODO:
+   
+## TODO:
    * Improve AOB scan performance
    * Convert nuint to nint because I was not thinking straight
    * Improve `Read/WriteAnyMemory<T>()` by [bridging generic constraints](https://github.com/dotnet/csharplang/discussions/6308) (when that eventually becomes possible)
    * Pretty sure I broke 32-bit support (might have to fix that eventually)
    * Add .ini support back
+   * and more i think
+   * learn markdown lol
    
+## uh um idk
 Create great PC game cheat trainers in C# with this easy to use library! This library will be available on NuGet at some point, includes XML IntelliSense docs and this code repo will eventually provide new build releases every commit when I feel like setting that up. For support please check the [wiki tab](https://github.com/NoSkillPureAndy/memory.andy.dll/wiki) in this repo.
 
 - For legacy Windows operating systems, check out [memory_legacy.dll](https://github.com/erfg12/memory_legacy.dll)
