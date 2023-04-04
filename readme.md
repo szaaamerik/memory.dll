@@ -10,11 +10,11 @@ Some changes from the original:
    * Programmed in .NET 7
    
 ## TODO:
-   * Improve AOB scan performance
    * Convert nuint to nint because I was not thinking straight
    * Improve `Read/WriteAnyMemory<T>()` by [bridging generic constraints](https://github.com/dotnet/csharplang/discussions/6308) (when that eventually becomes possible)
    * Pretty sure I broke 32-bit support (might have to fix that eventually)
    * Add .ini support back
+   * Add support for using parameter arrays (varargs for the Java programmers) instead of string pointers like `"base+10,20,34,5C"`
    * and more i think
    * learn markdown lol
    
