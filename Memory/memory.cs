@@ -458,14 +458,17 @@ public partial class Mem
             {
                 string test = oldOffsets;
                 if (oldOffsets.Contains("0x")) test = oldOffsets.Replace("0x", "");
-                long preParse;
-                if (!oldOffsets.Contains('-'))
-                    preParse = long.Parse(test, NumberStyles.AllowHexSpecifier);
-                else
+                long preParse = 0;
+                string[] fuck = test.Split("+");
+                foreach (string s in fuck)
                 {
-                    test = test.Replace("-", "");
-                    preParse = long.Parse(test, NumberStyles.AllowHexSpecifier);
-                    preParse *= -1;
+                    if (!oldOffsets.Contains('-'))
+                        preParse += long.Parse(s, NumberStyles.AllowHexSpecifier);
+                    else
+                    {
+                        test = test.Replace("-", "");
+                        preParse -= long.Parse(s, NumberStyles.AllowHexSpecifier);
+                    }
                 }
 
                 offsetsList.Add(preParse);

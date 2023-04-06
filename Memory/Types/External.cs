@@ -48,9 +48,9 @@ public readonly struct External<T>
         {
             Address = _m.Get64BitCode(address + offsets);
         }
-        catch
+        catch (Exception e)
         {
-            Debug.WriteLine($"[External<{typeof(T).Name}>] ADDRESS INVALID: " + address + offsets);
+            Debug.WriteLine($"[External<{typeof(T).Name}>] ADDRESS INVALID: " + address + offsets + "\nException:\n" + e);
         }
     }
 

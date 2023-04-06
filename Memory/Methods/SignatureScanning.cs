@@ -13,7 +13,7 @@ namespace Memory;
 public partial class Mem
 {
     private Dictionary<string, byte[]> _memoryCache = new();
-    public IEnumerable<nuint> ScanForSig(string sig, int resultLimit = 0, int bytesPerTask = 18000000, string module = "default")
+    public IEnumerable<nuint> ScanForSig(string sig, int resultLimit = 0, int numberOfTasks = 5, string module = "default")
     {
         if (string.IsNullOrWhiteSpace(sig))
             throw new ArgumentException("A blank signature was provided!");
@@ -61,6 +61,8 @@ public partial class Mem
             }
 
             buffer = _memoryCache[module];
+            
+            int bytesPerTask = buffer.Length / numberOfTasks;
 
             List<Task> tasks = new();
             nint foundCountPtr = Marshal.AllocHGlobal(16);
@@ -72,16 +74,23 @@ public partial class Mem
                 {
                     for (int j = 0; j < bytesPerTask; j++)
                     {
-                        if (i1 + j >= buffer.Length) break;
                         bool found = true;
+                        bool reachedEndOfBuffer = false;
                         for (int k = 0; k < sigBytes.Length; k++)
                         {
+                            if (i1 + j + k >= buffer.Length)
+                            {
+                                reachedEndOfBuffer = true;
+                                found = false;
+                                break;
+                            }
                             if ((buffer[i1 + j + k] & maskBytes[k]) != (sigBytes[k] & maskBytes[k]))
                             {
                                 found = false;
                                 break;
                             }
                         }
+                        if (reachedEndOfBuffer) break;
 
                         if (resultLimit != 0 && Marshal.ReadInt32(foundCountPtr) >= resultLimit) return;
                         if (!found) continue;

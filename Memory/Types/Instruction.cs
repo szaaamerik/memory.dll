@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System;
+using System.Diagnostics;
+using System.Linq;
 
 namespace Memory.Types;
 
@@ -36,8 +38,8 @@ public class Instruction : MemoryObject
             _nopBytes[i] = 0x90;
 
         if (BytesAtAddressAreCorrect || signature == "") return;
-
-        _signatureAddress = M.ScanForSig(_signature).FirstOrDefault();
+        
+        _signatureAddress = M.ScanForSig(_signature, 1, 20).FirstOrDefault();
         if (signatureOffset > 0)
             _signatureAddress += (uint) signatureOffset;
         else
