@@ -16,9 +16,9 @@ public class Instruction : MemoryObject
         !M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length)
             .SequenceEqual(_originalBytes);
 
-    public Instruction(string address, string offsets, byte[] originalBytes, byte[] newBytes = null,
+    public Instruction(string address, byte[] originalBytes, byte[] newBytes = null,
         bool toggleWithRet = false, string signature = "", int signatureOffset = 0, Mem m = null)
-        : base(address, offsets, m)
+        : base(address, "", m)
     {
         _originalBytes = originalBytes;
         _newBytes = newBytes;
@@ -37,14 +37,21 @@ public class Instruction : MemoryObject
         for (int i = 0; i < _nopBytes.Length; i++)
             _nopBytes[i] = 0x90;
 
+        if (!BytesAtAddressAreCorrect && signature == "")
+        {
+            Debug.WriteLine($"{address} isn't correct, and no signature was provided to scan for.");
+            return;
+        }
         if (BytesAtAddressAreCorrect || signature == "") return;
-        
+        Debug.WriteLine($"{address} isn't correct, scanning for {signature}");
+
         _signatureAddress = M.ScanForSig(_signature, 1, 20).FirstOrDefault();
         if (signatureOffset > 0)
             _signatureAddress += (uint) signatureOffset;
         else
             _signatureAddress -= (uint) -signatureOffset; //i think this is necessary because it's unsigned, but i'm not sure and too lazy to test
-        
+
+        Debug.WriteLine($"i found {_signatureAddress:X}!");
         UpdateAddressUsingSignature();
     }
 

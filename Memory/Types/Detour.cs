@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Memory.Types;
@@ -53,14 +54,23 @@ public class Detour : MemoryObject
 
         mutate?.Invoke(Allocated);
         
-        if (BytesAtAddressAreCorrect || signature == "") return;
         
+        if (!BytesAtAddressAreCorrect && signature == "")
+        {
+            Debug.WriteLine($"{address} isn't correct, and no signature was provided to scan for.");
+            return;
+        }
+        if (BytesAtAddressAreCorrect || signature == "") return;
+        Debug.WriteLine($"{address} isn't correct, scanning for {signature}");
+
+
         _signatureAddress = M.ScanForSig(_signature, resultLimit: 1).FirstOrDefault();
         if (signatureOffset > 0)
             _signatureAddress += (uint) signatureOffset;
         else
             _signatureAddress -= (uint) -signatureOffset; //i think this is necessary because it's unsigned, but i'm not sure and too lazy to test
-        
+
+        Debug.WriteLine($"i found {_signatureAddress:X}!");
         UpdateAddressUsingSignature();
     }
 
