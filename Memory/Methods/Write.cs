@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -170,6 +171,50 @@ public partial class Mem
 
         WriteProcessMemory(MProc.Handle, theCode, buf, 1, nint.Zero);
     }
+    
+    public unsafe bool WriteBit(string address, bool write, int bit, bool removeWriteProtection = true)
+    {
+        nuint addy = Get64BitCode(address);
+        MemoryProtection oldMemProt = 0x00;
+        
+        if (removeWriteProtection)
+            VirtualProtectEx(MProc.Handle, addy, 8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
+
+        byte buf;
+        if (!ReadProcessMemory(MProc.Handle, addy, &buf, 1, 0))
+            return false;
+        
+        buf &= (byte)~(1 << bit);
+        buf |= (byte)(Unsafe.As<bool, byte>(ref write) << bit);
+        
+        bool ret = WriteProcessMemory(MProc.Handle, addy, &buf, 1, nint.Zero);
+        
+        if (removeWriteProtection)
+            VirtualProtectEx(MProc.Handle, addy, 8, oldMemProt, out _);
+        
+        return ret;
+    }
+    public unsafe bool WriteBit(nuint address, bool write, int bit, bool removeWriteProtection = true)
+    {
+        MemoryProtection oldMemProt = 0x00;
+        
+        if (removeWriteProtection)
+            VirtualProtectEx(MProc.Handle, address, 8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
+
+        byte buf;
+        if (!ReadProcessMemory(MProc.Handle, address, &buf, 1, 0))
+            return false;
+        
+        buf &= (byte)~(1 << bit);
+        buf |= (byte)(Unsafe.As<bool, byte>(ref write) << bit);
+        
+        bool ret = WriteProcessMemory(MProc.Handle, address, &buf, 1, nint.Zero);
+        
+        if (removeWriteProtection)
+            VirtualProtectEx(MProc.Handle, address, 8, oldMemProt, out _);
+        
+        return ret;
+    }
         
     public unsafe bool WriteMemory<T>(string address, T write, bool removeWriteProtection = true) where T : unmanaged
     {
@@ -179,7 +224,7 @@ public partial class Mem
         if (removeWriteProtection)
             VirtualProtectEx(MProc.Handle, addy, 8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
             
-        bool ret = WriteProcessMemory(MProc.Handle, addy, (long)&write, (nuint)sizeof(T), nint.Zero);
+        bool ret = WriteProcessMemory(MProc.Handle, addy, &write, (nuint)sizeof(T), nint.Zero);
             
         if (removeWriteProtection)
             VirtualProtectEx(MProc.Handle, addy, 8, oldMemProt, out _);
@@ -193,7 +238,7 @@ public partial class Mem
         if (removeWriteProtection)
             VirtualProtectEx(MProc.Handle, address, 8, MemoryProtection.ExecuteReadWrite, out oldMemProt);
             
-        bool ret = WriteProcessMemory(MProc.Handle, address, (long)&write, (nuint)sizeof(T), nint.Zero);
+        bool ret = WriteProcessMemory(MProc.Handle, address, &write, (nuint)sizeof(T), nint.Zero);
             
         if (removeWriteProtection)
             VirtualProtectEx(MProc.Handle, address, 8, oldMemProt, out _);

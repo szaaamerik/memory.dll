@@ -84,6 +84,10 @@ public static class Imps
         ulong lpNumberOfBytesRead);
 
     [DllImport("kernel32.dll")]
+    public static extern unsafe bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, void* lpBuffer, nuint nSize,
+        ulong lpNumberOfBytesRead);
+
+    [DllImport("kernel32.dll")]
     public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, nint lpBuffer, nuint nSize,
         out ulong lpNumberOfBytesRead);
     
@@ -131,6 +135,10 @@ public static class Imps
 
     [DllImport("kernel32.dll")]
     public static extern bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, long lpBuffer, nuint nSize,
+        nint lpNumberOfBytesWritten);
+
+    [DllImport("kernel32.dll")]
+    public static extern unsafe bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, void* lpBuffer, nuint nSize,
         nint lpNumberOfBytesWritten);
 
     // Added to avoid casting to UIntPtr

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
@@ -61,13 +62,37 @@ public partial class Mem
         return ret;
 
     }
+    
+    public unsafe bool ReadBit(string code, int bit)
+    {
+        if (bit is < 0 or > 7)
+            throw new ArgumentException("Bit must be between 0 and 7");
+        
+        byte result;
+        nuint addy = Get64BitCode(code);
+        if (!ReadProcessMemory(MProc.Handle, addy, &result, 1, 0))
+            result = default;
+        
+        return (result & (1 << bit)) != 0;
+    }
+    public unsafe bool ReadBit(nuint address, int bit)
+    {
+        if (bit is < 0 or > 7)
+            throw new ArgumentException("Bit must be between 0 and 7");
+        
+        byte result;
+        if (!ReadProcessMemory(MProc.Handle, address, &result, 1, 0))
+            result = default;
+        
+        return (result & (1 << bit)) != 0;
+    }
 
     public unsafe T ReadMemory<T>(string address) where T : unmanaged
     {
         int size = Marshal.SizeOf<T>();
         T result;
         nuint addy = Get64BitCode(address);
-        if (!ReadProcessMemory(MProc.Handle, addy, (long)&result, (nuint)size, 0))
+        if (!ReadProcessMemory(MProc.Handle, addy, &result, (nuint)size, 0))
             result = default;
 
         return result;
@@ -76,7 +101,7 @@ public partial class Mem
     {
         int size = Marshal.SizeOf<T>();
         T result;
-        if (!ReadProcessMemory(MProc.Handle, address, (long)&result, (nuint)size, 0))
+        if (!ReadProcessMemory(MProc.Handle, address, &result, (nuint)size, 0))
             result = default;
 
         return result;
@@ -96,7 +121,7 @@ public partial class Mem
             case 28591: //Latin1
             {
                 byte memory = 0;
-                while (ReadProcessMemory(MProc.Handle, addy, (long)&memory, 1, 0))
+                while (ReadProcessMemory(MProc.Handle, addy, &memory, 1, 0))
                 {
                     if (memory == 0)
                         break;
@@ -142,7 +167,7 @@ public partial class Mem
             case 28591: //Latin1
             {
                 byte memory = 0;
-                while (ReadProcessMemory(MProc.Handle, address, (long)&memory, 1, 0))
+                while (ReadProcessMemory(MProc.Handle, address, &memory, 1, 0))
                 {
                     if (memory == 0)
                         break;
@@ -289,7 +314,7 @@ public partial class Mem
         
         fixed (T* resultsp = &results[0])
         {
-            if (!ReadProcessMemory(MProc.Handle, addy, (long)resultsp, (nuint)(size * length), 0))
+            if (!ReadProcessMemory(MProc.Handle, addy, resultsp, (nuint)(size * length), 0))
                 throw new($"ReadProcessMemory threw error code 0d{Marshal.GetLastWin32Error()} (0x{Marshal.GetLastWin32Error():X})");
         }
 
@@ -309,7 +334,7 @@ public partial class Mem
         
         fixed (T* resultsp = &results[0])
         {
-            if (!ReadProcessMemory(MProc.Handle, address, (long)resultsp, (nuint)(size * length), 0))
+            if (!ReadProcessMemory(MProc.Handle, address, resultsp, (nuint)(size * length), 0))
                 throw new($"ReadProcessMemory threw error code 0d{Marshal.GetLastWin32Error()} (0x{Marshal.GetLastWin32Error():X})");
         }
         
