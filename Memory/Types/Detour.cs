@@ -6,7 +6,7 @@ namespace Memory.Types;
 
 public class Detour : MemoryObject
 {
-    private readonly byte[] _originalBytes, _realOriginalBytes, _newBytes;
+    private byte[] _originalBytes, _realOriginalBytes, _newBytes;
     private readonly string _signature;
     private readonly int _signatureOffset;
     private nuint _signatureAddress;
@@ -72,6 +72,7 @@ public class Detour : MemoryObject
 
         Debug.WriteLine($"i found {_signatureAddress:X}!");
         UpdateAddressUsingSignature();
+        
     }
 
     public void Hook() => M.WriteArrayMemory(AddressPtr, _newBytes);
@@ -94,10 +95,14 @@ public class Detour : MemoryObject
     {
         _signatureAddress = M.ScanForSig(_signature, resultLimit: 1).FirstOrDefault();
         if (_signatureOffset > 0)
-            _signatureAddress += (uint) _signatureOffset;
+        {
+            _signatureAddress += (uint)_signatureOffset;
+            _originalBytes = M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length);
+        }
         else
             _signatureAddress -= (uint) _signatureOffset; //i think this is necessary because it's unsigned, but i'm not sure and too lazy to test
-
+        // Update the originalBytes
+        
         AddressPtr = _signatureAddress;
     }
 }
