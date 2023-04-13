@@ -433,6 +433,13 @@ public partial class Mem
         string newOffsets = theCode;
         if (theCode.Contains('+'))
             newOffsets = theCode[(theCode.IndexOf('+') + 1)..];
+        int a = 0;
+        while (newOffsets.Contains('+'))
+        {
+            a += int.Parse(newOffsets.Substring(0, newOffsets.IndexOf('+')), NumberStyles.HexNumber);
+            newOffsets = newOffsets[(newOffsets.IndexOf('+') + 1)..];
+        }
+        newOffsets = a.ToString("X") + newOffsets;
 
         byte[] memoryAddress = new byte[size];
 

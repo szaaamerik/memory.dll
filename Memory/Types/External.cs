@@ -44,14 +44,14 @@ public readonly struct External<T>
     public External(string address, string offsets = "", Mem m = null)
     {
         _m = m ?? Mem.DefaultInstance;
-        try
-        {
+        /*try
+        {*/
             Address = _m.Get64BitCode(address + offsets);
-        }
+        /*}
         catch (Exception e)
         {
             Debug.WriteLine($"[External<{typeof(T).Name}>] ADDRESS INVALID: " + address + offsets + "\nException:\n" + e);
-        }
+        }*/
     }
 
     public External(nuint address, string offsets = "", Mem m = null)
