@@ -55,6 +55,8 @@ public class Instruction : MemoryObject
         {
             Debug.WriteLine($"{address} isn't correct, and no signature was provided to scan for.");
             address = "0";
+            _signatureAddress = 0;
+            AddressPtr = 0;
             return;
         }
         if (BytesAtAddressAreCorrect || signature == "") return;
