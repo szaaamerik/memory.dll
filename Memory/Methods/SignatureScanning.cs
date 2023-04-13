@@ -13,12 +13,37 @@ namespace Memory;
 public partial class Mem
 {
     private Dictionary<string, byte[]> _memoryCache = new();
-    public IEnumerable<nuint> ScanForSig(string sig, int resultLimit = 0, int numberOfTasks = 5, string module = "default")
+    private Dictionary<string, IEnumerable<long>> _signatureResultCache = new();
+    /// <summary>
+    /// The default amount of tasks to use for signature scanning with the ScanForSig method.
+    /// 
+    /// </summary>
+    public int SigScanTasks = 16;
+    /// <summary>
+    /// Scans for a signature in the process' memory.
+    /// </summary>
+    /// <param name="sig">The signature to scan for.</param>
+    /// <param name="resultLimit">The amount of results to limit the scan to.
+    /// This can speed up scan times in some cases.</param>
+    /// <param name="numberOfTasks">The amount of tasks to use for the scan.
+    /// If the number of tasks is 0 or lower, the amount of tasks will be pulled from the SigScanTasks variable</param>
+    /// <param name="module">The module to scan in. If "default", the main module of the attached process will be used.</param>
+    /// <returns>An enumerable of addresses that match the signature.</returns>
+    /// <exception cref="ArgumentException">Thrown when the signature is blank.</exception>
+    public IEnumerable<nuint> ScanForSig(string sig, int resultLimit = 0, int numberOfTasks = -1, string module = "default")
     {
+        if (numberOfTasks <= 0)
+            numberOfTasks = SigScanTasks;
         if (string.IsNullOrWhiteSpace(sig))
             throw new ArgumentException("A blank signature was provided!");
         try
         {
+            if(_signatureResultCache.TryGetValue(sig, out var value))
+            {
+                var results = value.Select(x => (nuint)x);
+                if (resultLimit > 0) results = results.Take(resultLimit);
+                return results; 
+            }
             // Get the start and end address of the module
             Process proc = MProc.Process;
             proc.Refresh();
@@ -105,10 +130,10 @@ public partial class Mem
 
             while (tasks.Any(x => !x.IsCompleted))
             {
-                Thread.Sleep(1);
+                Task.Delay(1).Wait();
             }
             Marshal.FreeHGlobal(foundCountPtr);
-            
+            _signatureResultCache.Add(sig, addresses);
             return addresses.Select(x => (nuint)x);
         }
         catch (Exception e)

@@ -10,17 +10,19 @@ public class Detour : MemoryObject
     private readonly string _signature;
     private readonly int _signatureOffset;
     private nuint _signatureAddress;
+    private string _signatureModule = "default";
     public readonly nuint Allocated;
     
     public bool IsHooked =>
         !M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length)
             .SequenceEqual(_originalBytes);
     
-    public Detour(string address, byte[] ogBytes, byte[] newBytes, int replaceCount, Mem.DetourType detourType = Mem.DetourType.Unspecified, byte[] varBytes = null, string signature = "", int signatureOffset = 0, Action<nuint> mutate = null, Mem m = null) : base(address, "", m)
+    public Detour(string address, byte[] ogBytes, byte[] newBytes, int replaceCount, Mem.DetourType detourType = Mem.DetourType.Unspecified, byte[] varBytes = null, string signature = "", int signatureOffset = 0, string signatureModule = "default", Action<nuint> mutate = null, Mem m = null) : base(address, "", m)
     {
         _originalBytes = ogBytes;
         _signature = signature;
         _signatureOffset = signatureOffset;
+        _signatureModule = signatureModule;
         _realOriginalBytes = M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length);
 
         if (_originalBytes.Length != replaceCount)
@@ -58,13 +60,13 @@ public class Detour : MemoryObject
         if (!BytesAtAddressAreCorrect && signature == "")
         {
             Debug.WriteLine($"{address} isn't correct, and no signature was provided to scan for.");
+            address = "0";
             return;
         }
         if (BytesAtAddressAreCorrect || signature == "") return;
         Debug.WriteLine($"{address} isn't correct, scanning for {signature}");
-
-
-        _signatureAddress = M.ScanForSig(_signature, resultLimit: 1).FirstOrDefault();
+        
+        _signatureAddress = M.ScanForSig(_signature, resultLimit: 1, module: _signatureModule).FirstOrDefault();
         if (signatureOffset > 0)
             _signatureAddress += (uint) signatureOffset;
         else
@@ -93,7 +95,7 @@ public class Detour : MemoryObject
 
     public void UpdateAddressUsingSignature()
     {
-        _signatureAddress = M.ScanForSig(_signature, resultLimit: 1).FirstOrDefault();
+        _signatureAddress = M.ScanForSig(_signature, resultLimit: 1, module: _signatureModule).FirstOrDefault();
         if (_signatureOffset > 0)
         {
             _signatureAddress += (uint)_signatureOffset;
