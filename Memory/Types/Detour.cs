@@ -12,7 +12,7 @@ public class Detour : MemoryObject
     private nuint _signatureAddress;
     private string _signatureModule;
     public readonly nuint Allocated;
-    
+    public readonly nuint VarBytesAddress;
     public bool IsHooked =>
         !M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length)
             .SequenceEqual(_originalBytes);
@@ -24,7 +24,6 @@ public class Detour : MemoryObject
         _signatureOffset = signatureOffset;
         _signatureModule = signatureModule;
         _realOriginalBytes = M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length);
-
         if (_originalBytes.Length != replaceCount)
             throw new("Original bytes length should be equal to the replace count");
 
@@ -53,6 +52,7 @@ public class Detour : MemoryObject
                 _ => M.CalculateDetour(address, Allocated, Mem.DetourType.Call, replaceCount)
             }
         };
+        VarBytesAddress = Allocated + (uint)_newBytes?.Length + (uint) replaceCount;
 
         mutate?.Invoke(Allocated);
         
@@ -103,6 +103,7 @@ public class Detour : MemoryObject
                 _ => M.CalculateDetour(address, Allocated, Mem.DetourType.Call, replaceCount)
             }
         };
+        VarBytesAddress = detourAddress + (uint)_newBytes?.Length + (uint) replaceCount;
         
         if (!BytesAtAddressAreCorrect && signature == "")
         {
