@@ -30,6 +30,7 @@ public partial class Mem
             else
                 break;
         }
+
         return sb.ToString();
     }
 
@@ -60,30 +61,30 @@ public partial class Mem
             ret[i] = Convert.ToBoolean(buf[0] & (1 << i));
 
         return ret;
-
     }
-    
+
     public unsafe bool ReadBit(string code, int bit)
     {
         if (bit is < 0 or > 7)
             throw new ArgumentException("Bit must be between 0 and 7");
-        
+
         byte result;
         nuint addy = Get64BitCode(code);
         if (!ReadProcessMemory(MProc.Handle, addy, &result, 1, 0))
             result = default;
-        
+
         return (result & (1 << bit)) != 0;
     }
+
     public unsafe bool ReadBit(nuint address, int bit)
     {
         if (bit is < 0 or > 7)
             throw new ArgumentException("Bit must be between 0 and 7");
-        
+
         byte result;
         if (!ReadProcessMemory(MProc.Handle, address, &result, 1, 0))
             result = default;
-        
+
         return (result & (1 << bit)) != 0;
     }
 
@@ -97,6 +98,7 @@ public partial class Mem
 
         return result;
     }
+
     public unsafe T ReadMemory<T>(nuint address) where T : unmanaged
     {
         int size = Marshal.SizeOf<T>();
@@ -147,13 +149,15 @@ public partial class Mem
                         memoryNormal[^1] = (byte)(memory >> 8);
                     }
                 }
-                    
+
                 return stringEncoding.GetString(memoryNormal);
             }
             default:
-                throw new ArgumentException("Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
+                throw new ArgumentException(
+                    "Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
         }
     }
+
     public unsafe string ReadStringMemory(nuint address, Encoding stringEncoding = null)
     {
         stringEncoding ??= Encoding.UTF8;
@@ -193,11 +197,12 @@ public partial class Mem
                         memoryNormal[^1] = (byte)(memory >> 8);
                     }
                 }
-                    
+
                 return stringEncoding.GetString(memoryNormal);
             }
             default:
-                throw new ArgumentException("Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
+                throw new ArgumentException(
+                    "Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
         }
     }
 
@@ -219,7 +224,7 @@ public partial class Mem
                 {
                     if (!ReadProcessMemory(MProc.Handle, addy, memory, 1, nint.Zero))
                         break;
-                        
+
                     Array.Resize(ref memoryNormal, i + 1);
                     memoryNormal[i - 1] = memory;
                     addy += 1;
@@ -235,7 +240,7 @@ public partial class Mem
                 {
                     if (!ReadProcessMemory(MProc.Handle, addy, memory, 1, nint.Zero))
                         break;
-                        
+
                     Array.Resize(ref memoryNormal, i + 2);
                     unchecked
                     {
@@ -243,13 +248,15 @@ public partial class Mem
                         memoryNormal[i - 1] = (byte)(memory >> 8);
                     }
                 }
-                    
+
                 return stringEncoding.GetString(memoryNormal);
             }
             default:
-                throw new ArgumentException("Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
+                throw new ArgumentException(
+                    "Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
         }
     }
+
     public string ReadStringMemory(nuint address, int length, Encoding stringEncoding = null)
     {
         stringEncoding ??= Encoding.UTF8;
@@ -267,7 +274,7 @@ public partial class Mem
                 {
                     if (!ReadProcessMemory(MProc.Handle, address, memory, 1, nint.Zero))
                         break;
-                        
+
                     Array.Resize(ref memoryNormal, i + 1);
                     memoryNormal[i - 1] = memory;
                     address += 1;
@@ -283,7 +290,7 @@ public partial class Mem
                 {
                     if (!ReadProcessMemory(MProc.Handle, address, memory, 1, nint.Zero))
                         break;
-                        
+
                     Array.Resize(ref memoryNormal, i + 2);
                     unchecked
                     {
@@ -291,11 +298,12 @@ public partial class Mem
                         memoryNormal[i - 1] = (byte)(memory >> 8);
                     }
                 }
-                    
+
                 return stringEncoding.GetString(memoryNormal);
             }
             default:
-                throw new ArgumentException("Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
+                throw new ArgumentException(
+                    "Invalid encoding (must be UTF8, UTF7, ASCII, Latin1, Unicode, or BigEndianUnicode)");
         }
     }
 
@@ -311,15 +319,17 @@ public partial class Mem
                 result = new();
             results[i] = result;
         }*/
-        
+
         fixed (T* resultsp = &results[0])
         {
             if (!ReadProcessMemory(MProc.Handle, addy, resultsp, (nuint)(size * length), 0))
-                throw new($"ReadProcessMemory threw error code 0d{Marshal.GetLastWin32Error()} (0x{Marshal.GetLastWin32Error():X})");
+                throw new(
+                    $"ReadProcessMemory threw error code 0d{Marshal.GetLastWin32Error()} (0x{Marshal.GetLastWin32Error():X})");
         }
 
         return results;
     }
+
     public unsafe T[] ReadArrayMemory<T>(nuint address, int length) where T : unmanaged
     {
         int size = Marshal.SizeOf<T>();
@@ -331,16 +341,17 @@ public partial class Mem
                 result = new();
             results[i] = result;
         }*/
-        
+
         fixed (T* resultsp = &results[0])
         {
             if (!ReadProcessMemory(MProc.Handle, address, resultsp, (nuint)(size * length), 0))
-                throw new($"ReadProcessMemory threw error code 0d{Marshal.GetLastWin32Error()} (0x{Marshal.GetLastWin32Error():X})");
+                throw new(
+                    $"ReadProcessMemory threw error code 0d{Marshal.GetLastWin32Error()} (0x{Marshal.GetLastWin32Error():X})");
         }
-        
+
         return results;
     }
-        
+
     public T ReadAnyMemory<T>(string address)
     {
         nuint addy = Get64BitCode(address);
@@ -368,9 +379,10 @@ public partial class Mem
             true when t == typeof(decimal) => (T)(object)ReadMemory<decimal>(addy),
             true when t == typeof(nint) => (T)(object)ReadMemory<nint>(addy),
             true when t == typeof(nuint) => (T)(object)ReadMemory<nuint>(addy),
-            _ => throw new("FUCK YOU!!!")
+            _ => throw new("\"any\" is a subjective term")
         };
     }
+
     public T ReadAnyMemory<T>(nuint address)
     {
         Type t = typeof(T);
@@ -397,12 +409,13 @@ public partial class Mem
             true when t == typeof(decimal) => (T)(object)ReadMemory<decimal>(address),
             true when t == typeof(nint) => (T)(object)ReadMemory<nint>(address),
             true when t == typeof(nuint) => (T)(object)ReadMemory<nuint>(address),
-            _ => throw new("FUCK YOU!!!")
+            _ => throw new("\"any\" is a subjective term")
         };
     }
 
 
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _readTokenSrcs = new();
+
     /// <summary>
     /// Reads a memory address, keeps value in UI object. Ex: BindToUI("0x12345678,0x02,0x05", v => ObjName.Invoke((MethodInvoker)delegate { if (String.Compare(v, ObjName.Text) != 0) { ObjName.Text = v; } }));
     /// </summary>
