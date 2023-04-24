@@ -356,7 +356,7 @@ public partial class Mem
             true when t == typeof(decimal) => WriteMemory(addy, (decimal)(object)write, removeWriteProtection),
             true when t == typeof(nint) => WriteMemory(addy, (nint)(object)write, removeWriteProtection),
             true when t == typeof(nuint) => WriteMemory(addy, (nuint)(object)write, removeWriteProtection),
-            _ => throw new("FUCK YOU!!!")
+            _ => throw new("\"any\" is a subjective term")
         };
     }
 
@@ -388,7 +388,7 @@ public partial class Mem
             true when t == typeof(decimal) => WriteMemory(address, (decimal)(object)write, removeWriteProtection),
             true when t == typeof(nint) => WriteMemory(address, (nint)(object)write, removeWriteProtection),
             true when t == typeof(nuint) => WriteMemory(address, (nuint)(object)write, removeWriteProtection),
-            _ => throw new("FUCK YOU!!!")
+            _ => throw new("\"any\" is a subjective term")
         };
     }
 }
