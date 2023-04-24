@@ -26,7 +26,18 @@ public class Detour : MemoryObject
         _realOriginalBytes = M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length);
         if (_originalBytes.Length != replaceCount)
             throw new("Original bytes length should be equal to the replace count");
-
+        if (!M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length).SequenceEqual(_originalBytes) && signature != "")
+        {
+            Debug.WriteLine($"{address} isn't correct, scanning for {signature}");
+            address = (M.ScanForSig(_signature, resultLimit: 1, module: _signatureModule).FirstOrDefault() + (nuint)_signatureOffset).ToString("X");
+            _signatureAddress = M.ScanForSig(_signature, resultLimit: 1, module: _signatureModule).FirstOrDefault();
+            if (signatureOffset > 0)
+                _signatureAddress += (uint) signatureOffset;
+            else
+                _signatureAddress -= (uint) -signatureOffset; //i think this is necessary because it's unsigned, but i'm not sure and too lazy to test
+            UpdateAddressUsingSignature();
+            Debug.WriteLine($"i found {address}!");
+        }
         Allocated = detourType switch
         {
             Mem.DetourType.Jump => M.CreateDetour(address, newBytes, replaceCount, varBytes,  makeDetour: false),
@@ -66,17 +77,8 @@ public class Detour : MemoryObject
             return;
         }
         if (BytesAtAddressAreCorrect || signature == "") return;
-        Debug.WriteLine($"{address} isn't correct, scanning for {signature}");
 
-
-        _signatureAddress = M.ScanForSig(_signature, resultLimit: 1, module: _signatureModule).FirstOrDefault();
-        if (signatureOffset > 0)
-            _signatureAddress += (uint) signatureOffset;
-        else
-            _signatureAddress -= (uint) -signatureOffset; //i think this is necessary because it's unsigned, but i'm not sure and too lazy to test
-
-        Debug.WriteLine($"i found {_signatureAddress:X}!");
-        UpdateAddressUsingSignature();
+        
     }
     
     public Detour(string address, byte[] ogBytes, nuint detourAddress, int replaceCount, Mem.DetourType detourType = Mem.DetourType.Unspecified, string signature = "", int signatureOffset = 0, string signatureModule = "default", Mem m = null) : base(address, "", m)
@@ -90,7 +92,18 @@ public class Detour : MemoryObject
         if (_originalBytes.Length != replaceCount)
             throw new("Original bytes length should be equal to the replace count");
 
-
+        if (!M.ReadArrayMemory<byte>(AddressPtr, _originalBytes.Length).SequenceEqual(_originalBytes) && signature != "")
+        {
+            Debug.WriteLine($"{address} isn't correct, scanning for {signature}");
+            address = (M.ScanForSig(_signature, resultLimit: 1, module: _signatureModule).FirstOrDefault() + (nuint)_signatureOffset).ToString("X");
+            _signatureAddress = M.ScanForSig(_signature, resultLimit: 1, module: _signatureModule).FirstOrDefault();
+            if (signatureOffset > 0)
+                _signatureAddress += (uint) signatureOffset;
+            else
+                _signatureAddress -= (uint) -signatureOffset; //i think this is necessary because it's unsigned, but i'm not sure and too lazy to test
+            UpdateAddressUsingSignature();
+            Debug.WriteLine($"i found {address}!");
+        }
         Allocated = detourAddress;
         _newBytes = detourType switch
         {
@@ -114,17 +127,7 @@ public class Detour : MemoryObject
             return;
         }
         if (BytesAtAddressAreCorrect || signature == "") return;
-        Debug.WriteLine($"{address} isn't correct, scanning for {signature}");
-
-
-        _signatureAddress = M.ScanForSig(_signature, resultLimit: 1, module: _signatureModule).FirstOrDefault();
-        if (signatureOffset > 0)
-            _signatureAddress += (uint) signatureOffset;
-        else
-            _signatureAddress -= (uint) -signatureOffset; //i think this is necessary because it's unsigned, but i'm not sure and too lazy to test
-
-        Debug.WriteLine($"i found {_signatureAddress:X}!");
-        UpdateAddressUsingSignature();
+        //Debug.WriteLine($"{address} isn't correct, scanning for {signature}");
     }
 
     public void Hook() => M.WriteArrayMemory(AddressPtr, _newBytes);
