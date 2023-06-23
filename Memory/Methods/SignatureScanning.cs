@@ -133,7 +133,7 @@ public partial class Mem
                 Task.Delay(1).Wait();
             }
             Marshal.FreeHGlobal(foundCountPtr);
-            _signatureResultCache.Add(sig, addresses);
+            _signatureResultCache.TryAdd(sig, addresses);
             return addresses.Select(x => (nuint)x);
         }
         catch (Exception e)
