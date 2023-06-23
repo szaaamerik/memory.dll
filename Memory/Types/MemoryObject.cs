@@ -14,7 +14,7 @@ public class MemoryObject : IEquatable<MemoryObject>
     {
         M = m ?? Mem.DefaultInstance;
         Address = (address + offsets).TrimEnd(',').TrimEnd('+');
-        AddressPtr = M.Get64BitCode(Address);
+        AddressPtr = M.FollowMultiLevelPointer(Address);
     }
     protected MemoryObject(nuint address, string offsets = "", Mem m = null)
     {
@@ -27,7 +27,7 @@ public class MemoryObject : IEquatable<MemoryObject>
         else
         {
             Address = (address.ToString("X") + offsets).TrimEnd(',').TrimEnd('+');
-            AddressPtr = M.Get64BitCode(Address);
+            AddressPtr = M.FollowMultiLevelPointer(Address);
         }
     }
 

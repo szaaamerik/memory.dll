@@ -43,7 +43,7 @@ public partial class Mem
     {
         byte[] buf = new byte[1];
 
-        nuint theCode = Get64BitCode(code);
+        nuint theCode = FollowMultiLevelPointer(code);
 
         bool[] ret = new bool[8];
 
@@ -69,7 +69,7 @@ public partial class Mem
             throw new ArgumentException("Bit must be between 0 and 7");
 
         byte result;
-        nuint addy = Get64BitCode(code);
+        nuint addy = FollowMultiLevelPointer(code);
         if (!ReadProcessMemory(MProc.Handle, addy, &result, 1, 0))
             result = default;
 
@@ -92,7 +92,7 @@ public partial class Mem
     {
         int size = Marshal.SizeOf<T>();
         T result;
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
         if (!ReadProcessMemory(MProc.Handle, addy, &result, (nuint)size, 0))
             result = default;
 
@@ -113,7 +113,7 @@ public partial class Mem
     {
         stringEncoding ??= Encoding.UTF8;
         byte[] memoryNormal = Array.Empty<byte>();
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
 
         switch (stringEncoding.CodePage)
         {
@@ -210,7 +210,7 @@ public partial class Mem
     {
         stringEncoding ??= Encoding.UTF8;
         byte[] memoryNormal = new byte[length];
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
 
         switch (stringEncoding.CodePage)
         {
@@ -310,7 +310,7 @@ public partial class Mem
     public unsafe T[] ReadArrayMemory<T>(string address, int length) where T : unmanaged
     {
         int size = Marshal.SizeOf<T>();
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
         T[] results = new T[length];
         /*for (int i = 0; i < length; i++)
         {
@@ -354,7 +354,7 @@ public partial class Mem
 
     public T ReadAnyMemory<T>(string address)
     {
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
         Type t = typeof(T);
         return true switch
         {

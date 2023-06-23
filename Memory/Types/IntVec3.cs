@@ -88,7 +88,7 @@ public struct IntVec3 : IEquatable<IntVec3>, IFormattable
 
     public readonly string ToString(string? format, IFormatProvider? formatProvider)
     {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new();
         string separator = NumberFormatInfo.GetInstance(formatProvider).NumberGroupSeparator;
         sb.Append('<');
         sb.Append(X.ToString(format, formatProvider));

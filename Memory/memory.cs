@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 using static Memory.Imps;
 
 namespace Memory;
@@ -219,7 +220,7 @@ public partial class Mem
 
     public bool ChangeProtection(string code, MemoryProtection newProtection, out MemoryProtection oldProtection)
     {
-        nuint theCode = Get64BitCode(code);
+        nuint theCode = FollowMultiLevelPointer(code);
         if (theCode != nuint.Zero && MProc.Handle != nint.Zero)
             return VirtualProtectEx(MProc.Handle, theCode, MProc.Is64Bit ? 8 : 4, newProtection, out oldProtection);
         
@@ -231,7 +232,7 @@ public partial class Mem
         out MemoryProtection oldProtection)
     {
         nuint addy = code != ""
-            ? Get64BitCode(address.ToString("X") + code)
+            ? FollowMultiLevelPointer(address.ToString("X") + code)
             : address;
         if (addy != nuint.Zero
             && MProc.Handle != nint.Zero)
@@ -257,7 +258,7 @@ public partial class Mem
         if (MProc.Is64Bit)
         {
             if (size == 8) size = 16; //change to 64bit
-            return Get64BitCode(name, size); //jump over to 64bit code grab
+            return FollowMultiLevelPointer(name, size); //jump over to 64bit code grab
         }
 
         string theCode = name;
@@ -409,8 +410,8 @@ public partial class Mem
     /// <returns></returns>
     public nint GetModuleAddressByName(string name)
     {
-        return MProc.Process.Modules.Cast<ProcessModule>().SingleOrDefault(m =>
-            string.Equals(m.ModuleName, name, StringComparison.OrdinalIgnoreCase))!.BaseAddress;
+        ProcessModule? module = MProc.Process.Modules.Cast<ProcessModule>().SingleOrDefault(m => string.Equals(m.ModuleName, name, StringComparison.OrdinalIgnoreCase));
+        return module == null ? nint.Zero : module.BaseAddress;
     }
 
     /// <summary>
@@ -419,7 +420,7 @@ public partial class Mem
     /// <param name="name">label in ini file OR code</param>
     /// <param name="size">size of address (default is 16)</param>
     /// <returns></returns>
-    public nuint Get64BitCode(string name, int size = 16)
+    public nuint FollowMultiLevelPointer(string name, int size = 16)
     {
         string theCode = name;
 
@@ -561,77 +562,69 @@ public partial class Mem
         }
     }
 
-    public nuint FollowMultiLevelPointer(string path)
+    public nuint FollowMultiLevelPointer(string path) // Example: "base+1240C-4-4+4,10-8,B0+c-8+4,D8+-4"
     {
-        nuint base1 = nuint.Zero;
-        string[] offsets = path.Split(',');
-        if (offsets[0].Contains("base") || offsets[0].Contains("main"))
+        nuint baseAddress = nuint.Zero;
+        //Regex unnecessary = new(@"(?:0x|0X)*h*\s*");
+        //path = unnecessary.Replace(path, "");
+        //path = path.Replace("0x", "").Replace("0X", "").Replace("h", "").Replace(" ", "");
+        // hurts performance. not necessary. just write your pointer path correctly.
+        string[][] pathArray = path.Split(',').Select(x => x.Split('+')).ToArray(); // [[base, 1240C-4-4, 4], [10-8], [B0, c-8, 4], [D8, -4]]
+        string moduleName = pathArray[0][0].Split('-')[0];
+        string[] moduleNeg = moduleName == pathArray[0][0] ? Array.Empty<string>() : pathArray[0][0].Split('-')[1..];
+        if (moduleName == "base" || moduleName == "main")
+            baseAddress = (nuint)MProc.MainModule.BaseAddress;
+        else
         {
-            base1 = (nuint)MProc.MainModule.BaseAddress.ToInt64();
-            string[] additions = offsets[0].Split('+');
-            if (additions.Length > 1)
-                for (int i = 1; i < additions.Length; i++)
-                    base1 += nuint.Parse(additions[i], NumberStyles.HexNumber);
+            baseAddress = (nuint)GetModuleAddressByName(moduleName);
+            if (baseAddress == 0)
+                baseAddress = nuint.Parse(moduleName, NumberStyles.HexNumber);
         }
-        else if (!nuint.TryParse(offsets[0].Split('+')[0], NumberStyles.HexNumber, null, out _)) //this is so genius
+        foreach (string t in moduleNeg)
         {
-            string[] additions = offsets[0].Split('+');
-            base1 = (nuint)GetModuleAddressByName(additions[0]).ToInt64();
-            if (additions.Length > 1)
-                for (int i = 1; i < additions.Length; i++)
-                    base1 += nuint.Parse(additions[i], NumberStyles.HexNumber);
+            baseAddress -= (nuint)Convert.ToUInt64(t, 16);
         }
-        nuint[] offsetsInt = new nuint[offsets.Length - 1];
-        for (int i = 1; i < offsets.Length; i++)
+        for (int i = 1; i < pathArray[0].Length; i++)
         {
-            string[] additions = offsets[i].Split('+');
-            
-            offsetsInt[i - 1] = nuint.Parse(additions[0], NumberStyles.HexNumber);
-            if (additions.Length <= 1) continue;
-            
-            for (int j = 1; j < additions.Length; j++)
-                offsetsInt[i - 1] += nuint.Parse(additions[j], NumberStyles.HexNumber);
-        }
-        nuint address = base1;
-        for (int i = 0; i < offsetsInt.Length; i++)
-        {
-            if (i == 0) address = ReadMemory<nuint>(base1);
-            if (i == offsetsInt.Length - 1)
+            if (pathArray[0][i].Contains('-'))
             {
-                address += offsetsInt[i];
-                return address;
+                string[]
+                    ses = pathArray[0][i].Split('-'); // 1: ["1240C", "4", "4"] 2: this code won't run (no '-' in 4)
+                baseAddress += (nuint)Convert.ToUInt64(ses[0], 16);
+                for (int j = 1; j < ses.Length; j++)
+                {
+                    baseAddress -= (nuint)Convert.ToUInt64(ses[j], 16);
+                }
+
+                continue;
             }
-            address = ReadMemory<nuint>(address + offsetsInt[i]);
+            baseAddress += (nuint)Convert.ToUInt64(pathArray[0][i], 16);
         }
-        return address;
+        for (int i = 1; i < pathArray.Length; i++)
+        {
+            baseAddress = ReadMemory<nuint>(baseAddress);
+            for (int j = 0; j < pathArray[i].Length; j++)
+            {
+                if (pathArray[i][j].Contains('-'))
+                {
+                    string[] ses = pathArray[i][j].Split('-');
+                    baseAddress += (nuint)Convert.ToUInt64(ses[0], 16);
+                    for (int k = 1; k < ses.Length; k++)
+                    {
+                        baseAddress -= (nuint)Convert.ToUInt64(ses[k], 16);
+                    }
+                    continue;
+                }
+                baseAddress += (nuint)Convert.ToUInt64(pathArray[i][j], 16);
+            }
+        }
+        
+        return baseAddress;
     }
     
     public nuint FollowMultiLevelPointer(nuint baseAddress, string path)
     {
-        string[] offsets = path.Split(',');
-        nuint[] offsetsInt = new nuint[offsets.Length];
-        for (int i = 0; i < offsets.Length; i++)
-        {
-            string[] additions = offsets[i].Split('+');
-            
-            offsetsInt[i] = nuint.Parse(additions[0], NumberStyles.HexNumber);
-            if (additions.Length <= 1) continue;
-            
-            for (int j = 1; j < additions.Length; j++)
-                offsetsInt[i] += nuint.Parse(additions[j], NumberStyles.HexNumber);
-        }
-        nuint address = baseAddress;
-        for (int i = 0; i < offsetsInt.Length; i++)
-        {
-            if (i == 0) address = ReadMemory<nuint>(baseAddress);
-            if (i == offsetsInt.Length - 1)
-            {
-                address += offsetsInt[i];
-                return address;
-            }
-            address = ReadMemory<nuint>(address + offsetsInt[i]);
-        }
-        return address;
+        throw new NotImplementedException();
     }
 
     /// <summary>
@@ -707,7 +700,7 @@ public partial class Mem
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        nuint theCode = Get64BitCode(address);
+        nuint theCode = FollowMultiLevelPointer(address);
 
         // if x64 we need to try to allocate near the address so we dont run into the +-2GB limit of the 0xE9 jmp
 
@@ -766,7 +759,7 @@ public partial class Mem
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        nuint theCode = Get64BitCode(address);
+        nuint theCode = FollowMultiLevelPointer(address);
 
         // We're using a 14-byte 0xFF jmp instruction now, meaning no matter what we won't run into a limit.
 
@@ -813,7 +806,7 @@ public partial class Mem
             return nuint.Zero; // returning UIntPtr.Zero instead of throwing an exception
         // to better match existing code
 
-        nuint theCode = Get64BitCode(address);
+        nuint theCode = FollowMultiLevelPointer(address);
 
         // This uses a 16-byte call instruction. Makes it easier to translate aob scripts that return at different places.
 
@@ -1079,7 +1072,7 @@ public partial class Mem
     {
         byte[] detourBytes = new byte[replaceCount];
 
-        nuint theAddress = Get64BitCode(address);
+        nuint theAddress = FollowMultiLevelPointer(address);
         switch (type)
         {
             case DetourType.Jump:

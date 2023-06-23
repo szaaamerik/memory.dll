@@ -210,7 +210,7 @@ public partial class Mem
     /// <returns>First address found</returns>
     public async Task<nuint> AoBScan(string code, long end, string search)
     {
-        long start = (long)Get64BitCode(code).ToUInt64();
+        long start = (long)FollowMultiLevelPointer(code).ToUInt64();
 
         return (await AoBScan(start, end, search, true, true, true, false)).FirstOrDefault();
     }

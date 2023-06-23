@@ -46,7 +46,7 @@ public readonly struct External<T>
         _m = m ?? Mem.DefaultInstance;
         /*try
         {*/
-            Address = _m.Get64BitCode(address + offsets);
+            Address = _m.FollowMultiLevelPointer(address + offsets);
         /*}
         catch (Exception e)
         {
@@ -57,7 +57,7 @@ public readonly struct External<T>
     public External(nuint address, string offsets = "", Mem m = null)
     {
         _m = m ?? Mem.DefaultInstance;
-        Address = offsets == "" ? address : _m.Get64BitCode(address + offsets);
+        Address = offsets == "" ? address : _m.FollowMultiLevelPointer(address + offsets);
     }
 
 

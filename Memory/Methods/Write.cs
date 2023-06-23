@@ -25,7 +25,7 @@ public partial class Mem
     public bool FreezeValue<T>(string address, T value, int speed = 25) where T : unmanaged
     {
         CancellationTokenSource cts = new();
-        nuint addr = Get64BitCode(address);
+        nuint addr = FollowMultiLevelPointer(address);
 
         lock (_freezeTokenSrcs)
         {
@@ -111,7 +111,7 @@ public partial class Mem
     /// <param name="address">address where frozen value is stored</param>
     public void UnfreezeValue(string address)
     {
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
         Debug.WriteLine("Un-Freezing Address " + address);
         try
         {
@@ -161,7 +161,7 @@ public partial class Mem
 
         byte[] buf = new byte[1];
 
-        nuint theCode = Get64BitCode(code);
+        nuint theCode = FollowMultiLevelPointer(code);
 
         for (int i = 0; i < 8; i++)
         {
@@ -174,7 +174,7 @@ public partial class Mem
     
     public unsafe bool WriteBit(string address, bool write, int bit, bool removeWriteProtection = true)
     {
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
         MemoryProtection oldMemProt = 0x00;
         
         if (removeWriteProtection)
@@ -218,7 +218,7 @@ public partial class Mem
         
     public unsafe bool WriteMemory<T>(string address, T write, bool removeWriteProtection = true) where T : unmanaged
     {
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
         MemoryProtection oldMemProt = 0x00;
             
         if (removeWriteProtection)
@@ -248,7 +248,7 @@ public partial class Mem
 
     public bool WriteStringMemory(string address, string write, Encoding stringEncoding = null, bool removeWriteProtection = true)
     {
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
         MemoryProtection oldMemProt = 0x00;
             
         byte[] memory = stringEncoding == null
@@ -286,7 +286,7 @@ public partial class Mem
         
     public unsafe bool WriteArrayMemory<T>(string address, T[] write, bool removeWriteProtection = true) where T : unmanaged
     {
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
         MemoryProtection oldMemProt = 0x00;
             
         byte[] buffer = new byte[write.Length * sizeof(T)];
@@ -330,7 +330,7 @@ public partial class Mem
 
     public bool WriteAnyMemory<T>(string address, T write, bool removeWriteProtection = true)
     {
-        nuint addy = Get64BitCode(address);
+        nuint addy = FollowMultiLevelPointer(address);
         Type t = typeof(T);
 
         return true switch

@@ -74,7 +74,7 @@ public struct Rotations : IEquatable<Rotations>, IFormattable
 
     public readonly string ToString(string? format, IFormatProvider? formatProvider)
     {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new();
         string separator = NumberFormatInfo.GetInstance(formatProvider).NumberGroupSeparator;
         sb.Append('<');
         sb.Append(Pitch.ToString(format, formatProvider));
