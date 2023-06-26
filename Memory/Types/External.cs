@@ -5,9 +5,9 @@ using System.Runtime.CompilerServices;
 
 namespace Memory.Types;
 
-public readonly struct External<T>
+public class External<T>
 {
-    private readonly Mem _m;
+    protected readonly Mem _m;
     public override bool Equals(object obj) => obj is External<T> other && Equals(other);
 
     public bool Equals(External<T> other) => Address.Equals(other.Address);
@@ -62,6 +62,11 @@ public readonly struct External<T>
 
 
     #region Operator overloads
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator External<T>(string address) => new(address);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator External<T>(nuint address) => new(address);
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(External<T> left, External<T> right) => (dynamic)left.Value == (dynamic)right.Value;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
