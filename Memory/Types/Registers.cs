@@ -36,4 +36,15 @@ public enum Registers
     xmm5_op2 = 0b101,
     xmm6_op2 = 0b110,
     xmm7_op2 = 0b111,
+    
+    xmm0_op1 = 0b000,
+    xmm1_op1 = xmm1_op2 << 3,
+    xmm2_op1 = xmm2_op2 << 3,
+    xmm3_op1 = xmm3_op2 << 3,
+    xmm4_op1 = xmm4_op2 << 3,
+    xmm5_op1 = xmm5_op2 << 3,
+    xmm6_op1 = xmm6_op2 << 3,
+    xmm7_op1 = xmm7_op2 << 3,
+    
+    
 }

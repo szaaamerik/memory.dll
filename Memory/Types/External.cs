@@ -57,7 +57,7 @@ public class External<T>
     public External(nuint address, string offsets = "", Mem m = null)
     {
         _m = m ?? Mem.DefaultInstance;
-        Address = offsets == "" ? address : _m.FollowMultiLevelPointer(address + offsets);
+        Address = offsets == "" ? address : _m.FollowMultiLevelPointer(address.ToString("X") + offsets);
     }
 
 
