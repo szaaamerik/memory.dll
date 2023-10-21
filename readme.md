@@ -1,48 +1,44 @@
-## DESCRIPTION
-Andy's fork of [memory.dll](https://github.com/erfg12/memory.dll) with (hopefully) faster code, more features, and better practices.
-<br>
-Some changes from the original:
-   * Pretty sure I broke 32-bit support (might have to fix that eventually)
-   * Use generics instead of a string to write most types
-      - means you can write more types!
-   * Improved read/write performance
-   * Fun types like `External<T>`, `Instruction`, and `Detour` to make your life easier
-   * More "code cave" (detour) types (5 byte jmp near, 14 byte jmp far, and 16 byte call far)
-   * Programmed in .NET 7
-   
-## TODO:
-   * Convert nuint to nint because I was not thinking straight
-   * Improve `Read/WriteAnyMemory<T>()` by [bridging generic constraints](https://github.com/dotnet/csharplang/discussions/6308) (when that eventually becomes possible)
-   * Pretty sure I broke 32-bit support (might have to fix that eventually)
-   * Add .ini support back
-   * Add support for using parameter arrays (varargs for the Java programmers) instead of string pointers like `"base+10,20,34,5C"`
-   * and more i think
-   * learn markdown lol
-   
-## uh um idk
-Create great PC game cheat trainers in C# with this easy to use library! This library will be available on NuGet at some point, includes XML IntelliSense docs and this code repo will eventually provide new build releases every commit when I feel like setting that up. For support please check the [wiki tab](https://github.com/NoSkillPureAndy/memory.andy.dll/wiki) in this repo.
+## Description
+Andy's modified version of the original [memory.dll](https://github.com/erfg12/memory.dll), hopefully delivering a faster, and better-practiced library for process memory manipulation.
 
-- For legacy Windows operating systems, check out [memory_legacy.dll](https://github.com/erfg12/memory_legacy.dll)
 
-- For MacOS operating systems, check out [memory.dylib](https://github.com/erfg12/memory.dylib)
+The key changes and features of this fork include:
 
-- For 32-bit operating systems, check out [the original memory.dll](https://github.com/erfg12/memory.dll)
+* Enhanced memory read/write performance
+* Introduction of new data types like External<T>, Instruction, and Detour to simplify your programming tasks
+* Expansion of "code cave" (detour) options, such as 5-byte jmp near, 14-byte jmp far, and 16-byte call far
+* Programmed in .NET 7
 
-## FEATURES
-* Check if process is running (ID or name) and open, all in 1 function.
-* 32bit and 64bit games supported.
-* AoB scanning with full & partial masking.
-    * _Example: "?? ?? ?? ?5 ?? ?? 5? 00 ?? A9 C3 3B ?? 00 50 00"_
-* Inject DLLs and create named pipes to communicate with them.
-    * See [this wiki article](https://github.com/erfg12/memory.dll/wiki/Using-Named-Pipes) for more info.
-* Write to addresses with many different value types.
-    * _Example: byte, 2bytes, bytes, float, int, string, double or long_
-* you cannot use an Optional external .ini file for code storage.
-* Address structures are flexible. Can use modules, offsets and/or pointers. 
-    * _Example: "game.exe+0x12345678,0x12,0x34,0x56"_
-* Freeze values (infinte loop writing in threads)
-* Bind memory addresses to UI elements
-* more
 
-## DOCUMENTATION
-[Wiki Pages](https://github.com/NoSkillPureAndy/memory.andy.dll/wiki)
+## TODO List
+To further improve this library, the following things are on the TODO list:
+
+* Convert nuint to nint
+* Fix potential issues with 32-bit support
+* Restore .ini file support
+* Add the capability to use parameter arrays (varargs) instead of string pointers, e.g., "base+10,20,34,5C"
+* Miscellaneous improvements
+
+## Overview
+Create powerful PC game cheat trainers in C# with ease using this library.
+
+Eventually, this library will be available on NuGet. 
+
+Comes equipped with XML IntelliSense documentation. 
+
+Expect new build releases with every commit when set up.
+
+## Platform Support
+* For legacy Windows operating systems, check out [memory_legacy.dll](https://github.com/erfg12/memory_legacy.dll).
+* For MacOS operating systems, check out [memory.dylib](https://github.com/erfg12/memory.dylib).
+* For 32-bit operating systems, consider the original [memory.dll](https://github.com/erfg12/memory.dll).
+
+
+## Key Features
+* Check if a process is running, using either its ID or name, and open it in a single function call.
+* AoB (Array of Bytes) and Signature scanning with full and partial masking.
+* Inject DLLs and create named pipes for communication.
+* Writing to addresses with a wide range of value types, including byte, 2 bytes, bytes, float, int, string, double, and long.
+* Flexible address structures that allow the use of modules, offsets, and pointers, such as `"game.exe+0x12345678,0x12,0x34,0x56"`.
+* Freeze values with infinite loop writing threads.
+* Bind memory addresses to UI elements and more.
