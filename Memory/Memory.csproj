@@ -35,7 +35,6 @@
   </PropertyGroup>
 
 	<ItemGroup>
-	  <None Include="README.txt" pack="true" PackagePath="." />
 	  <None Include="..\LICENSE">
 	    <Pack>True</Pack>
 	    <PackagePath></PackagePath>
