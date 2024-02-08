@@ -7,6 +7,18 @@ public static class Utils
 {
     public static byte[] ParseSig(string sig, out byte[] mask)
     {
+        sig = sig.Replace('*', '?').Trim();
+        while (sig.EndsWith(" ?") || sig.EndsWith(" ??"))
+        {
+            if (sig.EndsWith(" ??"))
+            {
+                sig = sig[..^3];
+            }
+            if (sig.EndsWith(" ?"))
+            {
+                sig = sig[..^2];
+            }
+        }
         var stringByteArray = sig.Split(' ');
         var sigPattern = new byte[stringByteArray.Length];
         mask = new byte[stringByteArray.Length];

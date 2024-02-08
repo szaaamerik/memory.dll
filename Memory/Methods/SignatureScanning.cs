@@ -40,20 +40,7 @@ public partial class Mem
         
         var proc = MProc.Process;
         proc.Refresh();
-        sig = sig.Replace('*', '?');
-        sig = sig.Trim();
-        while (sig.EndsWith(" ?") || sig.EndsWith(" ??"))
-        {
-            if (sig.EndsWith(" ??"))
-            {
-                sig = sig[..^3];
-            }
-            if (sig.EndsWith(" ?"))
-            {
-                sig = sig[..^2];
-            }
-        }
-        
+       
         var startAddress = 0L;
         var endAddress = 0x7fffffffffffL;
         if (module == "default")
@@ -72,7 +59,7 @@ public partial class Mem
         }
         
         var sigBytes = Utils.ParseSig(sig, out var maskBytes);
-        List<long> addresses = new();
+        List<long> addresses = [];
         
         byte[] buffer;
         if (_memoryCache.All(x => x.Key != module))
@@ -84,7 +71,7 @@ public partial class Mem
         
         buffer = _memoryCache[module];
         var bytesPerTask = buffer.Length / numberOfTasks;
-        List<Task> tasks = new();
+        List<Task> tasks = [];
         
         var foundCountPtr = Marshal.AllocHGlobal(16);
         Marshal.WriteInt32(foundCountPtr, 0);

@@ -389,16 +389,15 @@ public partial class Mem
         {
             return 0;
         }
-        
+
         var minAddress = nuint.Subtract(baseAddress, 0x70000000);
         var maxAddress = nuint.Add(baseAddress, 0x70000000);
-
         var ret = nuint.Zero;
 
         GetSystemInfo(out var si);
         var min = si.MinimumApplicationAddress;
         var max = si.MaximumApplicationAddress;
-        
+
         if (MProc.Is64Bit)
         {
             minAddress = (UIntPtr)Math.Max((long)min, Math.Min((long)minAddress, (long)max));
@@ -412,6 +411,7 @@ public partial class Mem
 
         var current = minAddress;
         var allocSize = si.AllocationGranularity;
+
         while (VirtualQueryEx(MProc.Handle, current, out var mbi).ToUInt64() != 0)
         {
             if ((long)mbi.BaseAddress > (long)maxAddress)
@@ -421,61 +421,15 @@ public partial class Mem
 
             if (mbi.State == MemFree && mbi.RegionSize > size)
             {
-                nuint tmpAddress;
-                if ((long)mbi.BaseAddress % allocSize > 0)
+                var tmpAddress = GetAlignedAddress(mbi.BaseAddress, mbi.RegionSize, allocSize, size);
+
+                if (Math.Abs((long)tmpAddress - (long)baseAddress) < Math.Abs((long)ret - (long)baseAddress))
                 {
-                    tmpAddress = mbi.BaseAddress;
-                    var offset = (int)(allocSize - (long)tmpAddress % allocSize);
-
-                    if (mbi.RegionSize - offset >= size)
-                    {
-                        tmpAddress = nuint.Add(tmpAddress, offset);
-
-                        if ((long)tmpAddress < (long)baseAddress)
-                        {
-                            tmpAddress = nuint.Add(tmpAddress, (int)(mbi.RegionSize - offset - size));
-
-                            if ((long)tmpAddress > (long)baseAddress)
-                            {
-                                tmpAddress = baseAddress;
-                            }
-
-                            tmpAddress = nuint.Subtract(tmpAddress, (int)((long)tmpAddress % allocSize));
-                        }
-
-                        if (Math.Abs((long)tmpAddress - (long)baseAddress) < Math.Abs((long)ret - (long)baseAddress))
-                        {
-                            ret = tmpAddress;
-                        }
-                    }
-                }
-                else
-                {
-                    tmpAddress = mbi.BaseAddress;
-
-                    if ((long)tmpAddress < (long)baseAddress)
-                    {
-                        tmpAddress = nuint.Add(tmpAddress, (int)(mbi.RegionSize - size));
-
-                        if ((long)tmpAddress > (long)baseAddress)
-                        {
-                            tmpAddress = baseAddress;
-                        }
-
-                        tmpAddress = nuint.Subtract(tmpAddress, (int)((long)tmpAddress % allocSize));
-                    }
-
-                    if (Math.Abs((long)tmpAddress - (long)baseAddress) < Math.Abs((long)ret - (long)baseAddress))
-                    {
-                        ret = tmpAddress;
-                    }
+                    ret = tmpAddress;
                 }
             }
 
-            if (mbi.RegionSize % allocSize > 0)
-            {
-                mbi.RegionSize += allocSize - mbi.RegionSize % allocSize;
-            }
+            mbi.RegionSize = AlignRegionSize(mbi.RegionSize, allocSize);
 
             var previous = current;
             current = new UIntPtr(mbi.BaseAddress + (nuint)mbi.RegionSize);
@@ -487,5 +441,52 @@ public partial class Mem
         }
 
         return ret;
+    }
+
+    private static nuint GetAlignedAddress(nuint baseAddress, long regionSize, uint allocSize, uint size)
+    {
+        var tmpAddress = baseAddress;
+
+        if ((long)tmpAddress % allocSize > 0)
+        {
+            tmpAddress = nuint.Add(tmpAddress, (int)(allocSize - (long)tmpAddress % allocSize));
+
+            if ((long)tmpAddress >= (long)baseAddress)
+            {
+                return tmpAddress;
+            }
+            
+            tmpAddress = nuint.Add(tmpAddress, (int)(size - (long)tmpAddress % allocSize));
+
+            if ((long)tmpAddress > (long)baseAddress)
+            {
+                tmpAddress = baseAddress;
+            }
+
+            tmpAddress = nuint.Subtract(tmpAddress, (int)((long)tmpAddress % allocSize));
+        }
+        else
+        {
+            tmpAddress = nuint.Add(tmpAddress, (int)(regionSize - size));
+
+            if ((long)tmpAddress > (long)baseAddress)
+            {
+                tmpAddress = baseAddress;
+            }
+
+            tmpAddress = nuint.Subtract(tmpAddress, (int)((long)tmpAddress % allocSize));
+        }
+
+        return tmpAddress;
+    }
+
+    private static long AlignRegionSize(long regionSize, uint allocSize)
+    {
+        if (regionSize % allocSize > 0)
+        {
+            regionSize += allocSize - regionSize % allocSize;
+        }
+
+        return regionSize;
     }
 }
