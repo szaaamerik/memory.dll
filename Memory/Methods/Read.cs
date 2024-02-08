@@ -63,15 +63,18 @@ public partial class Mem
             case 20127: //ASCII
             case 28591: //Latin1
             {
-                for (var i = 0; i < length; i++)
+                for (var i = 1; i < length; i++)
                 {
                     byte memory;
                     if ((memory = ReadMemory<byte>(address)) == 0)
                     {
                         break;
                     }
+                    if (memoryNormal.Length < i + 1)
+                    {
+                        Array.Resize(ref memoryNormal, i + 1);
+                    }
 
-                    Array.Resize(ref memoryNormal, i + 1);
                     memoryNormal[i - 1] = memory;
                     address += 1;
                 }
@@ -81,7 +84,7 @@ public partial class Mem
             case 1200: //Unicode (UTF16)
             case 1201: //BigEndianUnicode (UTF16 big endian)
             {
-                for (var i = 0; i < length * 2; i += 2)
+                for (var i = 2; i < length * 2; i += 2)
                 {
                     short memory;
                     if ((memory = ReadMemory<short>(address)) == 0)
@@ -89,7 +92,11 @@ public partial class Mem
                         break;
                     }
 
-                    Array.Resize(ref memoryNormal, i + 2);
+                    if (memoryNormal.Length < i + 2)
+                    {
+                        Array.Resize(ref memoryNormal, i + 2);
+                    }
+
                     unchecked
                     {
                         memoryNormal[i - 2] = (byte)memory;

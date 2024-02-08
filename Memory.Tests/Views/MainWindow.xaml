@@ -184,6 +184,7 @@
                 <ui:TextBox Margin="10 0 0 0"
                             VerticalAlignment="Center"
                             PlaceholderText="11EA2007D10"
+                            Text="{Binding ViewModel.ReadAddress}"
                             IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
                 
                 <ui:TextBlock Margin="10 0 0 0" 
@@ -193,7 +194,7 @@
                 
                 <ComboBox Margin="10 0 0 0"
                           VerticalAlignment="Center"
-                          SelectedIndex="0"
+                          SelectedIndex="{Binding ViewModel.ReadIndex}"
                           IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}">
                     <ComboBoxItem Content="Byte"/>
                     <ComboBoxItem Content="Short"/>
@@ -212,12 +213,14 @@
                             VerticalAlignment="Center"
                             IsReadOnly="True"
                             IsReadOnlyCaretVisible="True"
-                            Text="0"
+                            Text="{Binding ViewModel.ReadValue, Mode=OneWay}"
                             IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
                 
                 <ui:Button Margin="10 0 0 0" 
                            VerticalAlignment="Center"
                            Content="Read"
+                           Command="{Binding ViewModel.ButtonActionCommand}"
+                           CommandParameter="read"
                            IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
                 
             </StackPanel>
@@ -239,6 +242,7 @@
                 <ui:TextBox Margin="10 0 0 0"
                             VerticalAlignment="Center"
                             PlaceholderText="11EA2007D10"
+                            Text="{Binding ViewModel.ProtectionAddress}"
                             IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
                 
                 <ui:TextBlock Margin="10 0 0 0" 
@@ -248,7 +252,7 @@
                 
                 <ComboBox Margin="10 0 0 0"
                           VerticalAlignment="Center"
-                          SelectedIndex="0"
+                          SelectedIndex="{Binding ViewModel.ProtectionIndex}"
                           IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}">
                     <ComboBoxItem Content="Execute"/>
                     <ComboBoxItem Content="ExecuteRead"/>
@@ -266,6 +270,8 @@
                 <ui:Button Margin="10 0 0 0" 
                            VerticalAlignment="Center"
                            Content="Change Protection"
+                           Command="{Binding ViewModel.ButtonActionCommand}"
+                           CommandParameter="protection"
                            IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
                 
             </StackPanel>

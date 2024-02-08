@@ -42,10 +42,10 @@ public partial class MainWindowViewModel : ObservableObject
     
     #endregion
     
-    #region Memory Writes Variables
+    #region Memory Read/Write Variables
 
     [Flags]
-    public enum WriteTypes
+    public enum ReadWriteTypes
     {
         Byte,
         Short,
@@ -56,10 +56,10 @@ public partial class MainWindowViewModel : ObservableObject
     }
     
     [ObservableProperty]
-    private string _writeAddress = string.Empty;
-
+    private ReadWriteTypes _writeType;
+    
     [ObservableProperty]
-    private WriteTypes _writeType;
+    private string _writeAddress = string.Empty;
     
     [ObservableProperty]
     private int _writeIndex;
@@ -67,6 +67,31 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string _writeValue = "0";
     
+    [ObservableProperty]
+    private ReadWriteTypes _readType;
+    
+    [ObservableProperty]
+    private string _readAddress = string.Empty;
+    
+    [ObservableProperty]
+    private int _readIndex;
+
+    [ObservableProperty]
+    private string _readValue = "0";
+    
+    #endregion
+
+    #region Protection Variables
+
+    [ObservableProperty]
+    private string _protectionAddress = string.Empty;
+    
+    [ObservableProperty]
+    private int _protectionIndex;
+    
+    [ObservableProperty]
+    private Imps.MemoryProtection _protectionType;
+
     #endregion
     
     public MainWindowViewModel()
@@ -103,10 +128,12 @@ public partial class MainWindowViewModel : ObservableObject
             }
             case "read":
             {
+                Read();
                 break;
             }
             case "protection":
             {
+                ChangeProtection();
                 break;
             }
         }
@@ -169,10 +196,10 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        WriteType = (WriteTypes)WriteIndex;
+        WriteType = (ReadWriteTypes)WriteIndex;
         switch (WriteType)
         {
-            case WriteTypes.Byte:
+            case ReadWriteTypes.Byte:
             {
                 if (!byte.TryParse(WriteValue, out var result))
                 {
@@ -184,7 +211,7 @@ public partial class MainWindowViewModel : ObservableObject
                 _mem.WriteMemory(address, result);
                 break;
             }
-            case WriteTypes.Short:
+            case ReadWriteTypes.Short:
             {
                 if (!short.TryParse(WriteValue, out var result))
                 {
@@ -196,7 +223,7 @@ public partial class MainWindowViewModel : ObservableObject
                 _mem.WriteMemory(address, result);
                 break;
             }
-            case WriteTypes.Int:
+            case ReadWriteTypes.Int:
             {
                 if (!int.TryParse(WriteValue, out var result))
                 {
@@ -208,7 +235,7 @@ public partial class MainWindowViewModel : ObservableObject
                 _mem.WriteMemory(address, result);
                 break;
             }
-            case WriteTypes.Float:
+            case ReadWriteTypes.Float:
             {
                 if (!float.TryParse(WriteValue, out var result))
                 {
@@ -220,7 +247,7 @@ public partial class MainWindowViewModel : ObservableObject
                 _mem.WriteMemory(address, result);
                 break;
             }
-            case WriteTypes.Double:
+            case ReadWriteTypes.Double:
             {
                 if (!double.TryParse(WriteValue, out var result))
                 {
@@ -232,7 +259,7 @@ public partial class MainWindowViewModel : ObservableObject
                 _mem.WriteMemory(address, result);
                 break;
             }
-            case WriteTypes.String:
+            case ReadWriteTypes.String:
             {
                 _mem.WriteStringMemory(address, WriteValue);
                 break;
@@ -242,6 +269,55 @@ public partial class MainWindowViewModel : ObservableObject
                 throw new ArgumentOutOfRangeException();
             }
         }
+    }
+
+    private void Read()
+    {
+        if (string.IsNullOrWhiteSpace(ReadAddress))
+        {
+            const string error = "Address cant be null, empty or whitespace";
+            ShowError(error);
+            return;
+        }
+
+        if (!nuint.TryParse(ReadAddress, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var address))
+        {
+            const string error = "Failed to parse the read address";
+            ShowError(error);
+            return;
+        }
+
+        ReadType = (ReadWriteTypes)ReadIndex;
+        ReadValue = ReadType switch
+        {
+            ReadWriteTypes.Byte => _mem.ReadMemory<byte>(address).ToString(),
+            ReadWriteTypes.Short => _mem.ReadMemory<short>(address).ToString(),
+            ReadWriteTypes.Int => _mem.ReadMemory<int>(address).ToString(),
+            ReadWriteTypes.Float => _mem.ReadMemory<float>(address).ToString(CultureInfo.InvariantCulture),
+            ReadWriteTypes.Double => _mem.ReadMemory<double>(address).ToString(CultureInfo.InvariantCulture),
+            ReadWriteTypes.String => _mem.ReadStringMemory(address, 10),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    private void ChangeProtection()
+    {
+        if (string.IsNullOrWhiteSpace(ProtectionAddress))
+        {
+            const string error = "Address cant be null, empty or whitespace";
+            ShowError(error);
+            return;
+        }
+
+        if (!nuint.TryParse(ProtectionAddress, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var address))
+        {
+            const string error = "Failed to parse the read address";
+            ShowError(error);
+            return;
+        }
+
+        ProtectionType = (Imps.MemoryProtection)ProtectionIndex;
+        _mem.ChangeProtection(address, ProtectionType, out _);
     }
     
     private static async void ShowError(string error)
