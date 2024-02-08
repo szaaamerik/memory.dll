@@ -47,9 +47,14 @@ public static partial class Imps
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool IsWow64Process(nint hProcess, [MarshalAs(UnmanagedType.Bool)] out bool lpSystemInfo);
     
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool VirtualFreeEx(nint hProcess, nuint lpAddress, nuint dwSize, uint dwFreeType);
+    
     public const uint MemFree = 0x10000;
     public const uint MemCommit = 0x00001000;
     public const uint MemReserve = 0x00002000;
+    public const uint MemRelease = 0x8000;
 
     public const uint Readonly = 0x02;
     public const uint Readwrite = 0x04;

@@ -3,14 +3,20 @@ using System.Linq;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
+
 using static Memory.Imps;
 
 namespace Memory;
 
 public partial class Mem
 {
+    public static Mem DefaultInstance { get; private set; }
     public readonly Proc MProc = new();
+
+    public Mem()
+    {
+        DefaultInstance = this;
+    }
 
     public nuint VirtualQueryEx(nint hProcess, nuint lpAddress, out MemoryBasicInformation lpBuffer)
     {
@@ -81,7 +87,7 @@ public partial class Mem
         return OpenProcessResults.Success;
     }
 
-    private static bool IsProcessRunning(int processId)
+    public static bool IsProcessRunning(int processId)
     {
         if (processId <= 0)
         {
