@@ -10,7 +10,7 @@ namespace Memory;
 
 public partial class Mem
 {
-    public static Mem DefaultInstance { get; private set; }
+    public static Mem DefaultInstance { get; private set; } = null!;
     public readonly Proc MProc = new();
 
     public Mem()
