@@ -2,62 +2,51 @@
 using System.Runtime.InteropServices;
 
 namespace Memory;
-public static class Imps
+public static partial class Imps
 {
-    [DllImport("kernel32.dll")]
-    public static extern nint OpenProcess(
-        uint dwDesiredAccess,
-        [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle,
-        int dwProcessId
-    );
+    [LibraryImport("kernel32.dll")]
+    public static partial nint OpenProcess(uint dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, int dwProcessId);
 
-    [DllImport("kernel32.dll", EntryPoint = "VirtualQueryEx")]
-    public static extern nuint Native_VirtualQueryEx(nint hProcess, nuint lpAddress,
-        out MemoryBasicInformation32 lpBuffer, nuint dwLength);
+    [LibraryImport("kernel32.dll", EntryPoint = "VirtualQueryEx")]
+    public static partial nuint Native_VirtualQueryEx(nint hProcess, nuint lpAddress, out MemoryBasicInformation32 lpBuffer, nuint dwLength);
 
-    [DllImport("kernel32.dll", EntryPoint = "VirtualQueryEx")]
-    public static extern nuint Native_VirtualQueryEx(nint hProcess, nuint lpAddress,
-        out MemoryBasicInformation64 lpBuffer, nuint dwLength);
+    [LibraryImport("kernel32.dll", EntryPoint = "VirtualQueryEx")]
+    public static partial nuint Native_VirtualQueryEx(nint hProcess, nuint lpAddress, out MemoryBasicInformation64 lpBuffer, nuint dwLength);
 
-    [DllImport("kernel32.dll")]
-    public static extern void GetSystemInfo(out SystemInfo lpSystemInfo);
+    [LibraryImport("kernel32.dll")]
+    public static partial void GetSystemInfo(out SystemInfo lpSystemInfo);
 
-    [DllImport("kernel32.dll")]
-    public static extern unsafe bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, void* lpBuffer, nuint nSize,
-        ulong lpNumberOfBytesRead);
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static unsafe partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, void* lpBuffer, nuint nSize, ulong lpNumberOfBytesRead);
 
-    [DllImport("kernel32.dll")]
-    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, nint lpBuffer, nuint nSize,
-        out ulong lpNumberOfBytesRead);
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, nint lpBuffer, nuint nSize, out ulong lpNumberOfBytesRead);
     
-    [DllImport("kernel32.dll")]
-    public static extern bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, byte[] lpBuffer, int dwSize, int lpNumberOfBytesRead = 0);
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ReadProcessMemory(nint hProcess, nuint lpBaseAddress, byte[] lpBuffer, int dwSize, int lpNumberOfBytesRead = 0);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern nuint VirtualAllocEx(
-        nint hProcess,
-        nuint lpAddress,
-        uint dwSize,
-        uint flAllocationType,
-        uint flProtect
-    );
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    public static partial nuint VirtualAllocEx(nint hProcess, nuint lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
 
-    [DllImport("kernel32.dll")]
-    public static extern bool VirtualProtectEx(nint hProcess, nuint lpAddress,
-        nint dwSize, MemoryProtection flNewProtect, out MemoryProtection lpflOldProtect);
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool VirtualProtectEx(nint hProcess, nuint lpAddress, nint dwSize, MemoryProtection flNewProtect, out MemoryProtection lpflOldProtect);
 
-    [DllImport("kernel32.dll")]
-    public static extern bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, byte[] lpBuffer, nuint nSize,
-        nint lpNumberOfBytesWritten);
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, byte[] lpBuffer, nuint nSize, nint lpNumberOfBytesWritten);
 
-    [DllImport("kernel32.dll")]
-    public static extern unsafe bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, void* lpBuffer, nuint nSize,
-        nint lpNumberOfBytesWritten);
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static unsafe partial bool WriteProcessMemory(nint hProcess, nuint lpBaseAddress, void* lpBuffer, nuint nSize, nint lpNumberOfBytesWritten);
     
-    [DllImport("kernel32")]
-    public static extern bool IsWow64Process(nint hProcess, [MarshalAs(UnmanagedType.Bool)] out bool lpSystemInfo);
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool IsWow64Process(nint hProcess, [MarshalAs(UnmanagedType.Bool)] out bool lpSystemInfo);
     
-    // used for memory allocation
     public const uint MemFree = 0x10000;
     public const uint MemCommit = 0x00001000;
     public const uint MemReserve = 0x00002000;

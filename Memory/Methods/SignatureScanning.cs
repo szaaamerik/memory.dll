@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Memory;
@@ -18,6 +16,11 @@ public partial class Mem
     public readonly int SigScanTasks = 16;
     public IEnumerable<nuint> ScanForSig(string sig, int resultLimit = 0, int numberOfTasks = -1, string module = "default")
     {
+        if (!IsProcessRunning(MProc.ProcessId))
+        {
+            return Array.Empty<nuint>();
+        }
+        
         if (numberOfTasks <= 0)
         {
             numberOfTasks = SigScanTasks;

@@ -1,63 +1,19 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Numerics;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using static Memory.Imps;
 
 namespace Memory;
 
 public partial class Mem
 {
-    private readonly ConcurrentDictionary<nuint, CancellationTokenSource> _freezeTokenSrcs = new();
-  
-    public bool FreezeValue<T>(nuint address, T value, int speed = 25) where T : unmanaged
-    {
-        lock (_freezeTokenSrcs)
-        {
-            if (_freezeTokenSrcs.TryRemove(address, out var valueFound))
-            {
-                valueFound?.Cancel();
-            }
-
-            _freezeTokenSrcs.TryAdd(address, new CancellationTokenSource());
-        }
-
-        lock (_freezeTokenSrcs)
-        {
-            Task.Factory.StartNew(() =>
-            {
-                lock (_freezeTokenSrcs)
-                {
-                    while (!_freezeTokenSrcs[address].Token.IsCancellationRequested)
-                    {
-                        WriteMemory(address, value);
-                        Thread.Sleep(speed);
-                    }
-                }
-            }, _freezeTokenSrcs[address].Token);
-        }
-
-        return true;
-    }
-
-    public void UnfreezeValue(nuint address)
-    {
-        lock (_freezeTokenSrcs)
-        {
-            if (_freezeTokenSrcs.TryRemove(address, out var tokenSource))
-            {
-                tokenSource?.Cancel();
-            }
-        }
-    }
-    
     public unsafe bool WriteBit(nuint address, bool write, int bit, bool removeWriteProtection = true)
     {
+        if (!IsProcessRunning(MProc.ProcessId))
+        {
+            return false;
+        }
+
         MemoryProtection oldMemProt = 0x00;
 
         byte buf;
@@ -85,6 +41,11 @@ public partial class Mem
         
     public unsafe bool WriteMemory<T>(nuint address, T write, bool removeWriteProtection = true) where T : unmanaged
     {
+        if (!IsProcessRunning(MProc.ProcessId))
+        {
+            return false;
+        }
+        
         MemoryProtection oldMemProt = 0x00;
 
         if (removeWriteProtection)
@@ -103,6 +64,11 @@ public partial class Mem
 
     public bool WriteStringMemory(nuint address, string write, Encoding stringEncoding = null, bool removeWriteProtection = true)
     {
+        if (!IsProcessRunning(MProc.ProcessId))
+        {
+            return false;
+        }
+        
         MemoryProtection oldMemProt = 0x00;
             
         if (removeWriteProtection)
@@ -122,6 +88,11 @@ public partial class Mem
         
     public unsafe bool WriteArrayMemory<T>(nuint address, T[] write, bool removeWriteProtection = true) where T : unmanaged
     {
+        if (!IsProcessRunning(MProc.ProcessId))
+        {
+            return false;
+        }
+
         MemoryProtection oldMemProt = 0x00;
             
         var buffer = new byte[write.Length * sizeof(T)];

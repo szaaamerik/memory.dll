@@ -6,11 +6,269 @@
         xmlns:local="clr-namespace:Memory.Tests.Views"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         mc:Ignorable="d"
-        Title="MainWindow" 
-        Height="450" 
-        Width="800">
+        d:DataContext="{d:DesignInstance local:MainWindow,IsDesignTimeCreatable=True}"
+        ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
+        ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+        Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica"
+        WindowCornerPreference="Round"
+        WindowStartupLocation="CenterScreen"
+        Title="{Binding ViewModel.ApplicationTitle, Mode=OneWay}" 
+        Height="580" 
+        Width="735">
     <Grid>
-        <StackPanel>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        
+        <ui:TitleBar Title="{Binding ViewModel.ApplicationTitle, Mode=OneWay}"
+                     Grid.Row="0"/>
+        
+        <StackPanel Grid.Row="1" Margin="20">
+            
+            <ui:TextBlock FontTypography="Subtitle"
+                          VerticalAlignment="Center"
+                          HorizontalAlignment="Center"
+                          Text="Attaching:"/>
+            
+            <StackPanel Margin="0 15 0 0" 
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center">
+
+                <ui:TextBlock FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Process To Attach To:"/>
+
+                <ui:TextBox Margin="10 0 0 0"
+                            VerticalAlignment="Center"
+                            Text="{Binding ViewModel.OpenProcessTargetName}"
+                            PlaceholderText="TestApp.Exe"/>
+                
+                <ui:Button Margin="10 0 0 0" 
+                           VerticalAlignment="Center"
+                           Content="Attach"
+                           Command="{Binding ViewModel.ButtonActionCommand, Mode=OneWay}"
+                           CommandParameter="attach"/>
+                
+                <ui:TextBlock Margin="10 0 0 0"
+                              VerticalAlignment="Center"
+                              FontTypography="BodyStrong"
+                              Text="{Binding ViewModel.OpenProcessResponse, Mode=OneWay}"/>
+                
+            </StackPanel>
+            
+            <ui:TextBlock Margin="0 15 0 0" 
+                          FontTypography="Subtitle"
+                          VerticalAlignment="Center"
+                          HorizontalAlignment="Center"
+                          Text="Signature Scanning:"/>
+
+            <StackPanel Orientation="Horizontal"
+                        Margin="0 15 0 0"
+                        HorizontalAlignment="Center">
+
+                <ui:TextBlock FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Signature:"/>
+
+                <ui:TextBox Margin="10 0 0 0"
+                            VerticalAlignment="Center"
+                            Text="{Binding ViewModel.Signature}"
+                            PlaceholderText="F2 0F 11 43 08 48 83"
+                            IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
+                
+                <ui:TextBlock Margin="10 0 0 0"
+                              FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Module:"/>
+                
+                <ui:TextBox Margin="10 0 0 0"
+                            VerticalAlignment="Center"
+                            Text="{Binding ViewModel.Module}"
+                            PlaceholderText="Default"
+                            IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
+                
+                <ui:TextBlock Margin="10 0 0 0"
+                              FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Result:"/>
+                
+                <ui:TextBox Margin="10 0 0 0"
+                            VerticalAlignment="Center"
+                            IsReadOnly="True"
+                            Text="{Binding ViewModel.SignatureScanResult, Mode=OneWay}"
+                            IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
+                
+                <ui:Button Margin="10 0 0 0" 
+                           VerticalAlignment="Center"
+                           Content="Scan"
+                           Command="{Binding ViewModel.ButtonActionCommand}"
+                           CommandParameter="sig"
+                           IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
+                
+            </StackPanel>
+            
+            <ui:TextBlock Margin="0 15 0 0" 
+                          FontTypography="Subtitle"
+                          VerticalAlignment="Center"
+                          HorizontalAlignment="Center"
+                          Text="Memory Writes:"/>
+            
+            <StackPanel Orientation="Horizontal"
+                        Margin="0 15 0 0"
+                        HorizontalAlignment="Center">
+
+                <ui:TextBlock FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Address:"/>
+
+                <ui:TextBox Margin="10 0 0 0"
+                            VerticalAlignment="Center"
+                            PlaceholderText="11EA2007D10"
+                            IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"
+                            Text="{Binding ViewModel.WriteAddress}"/>
+                
+                <ui:TextBlock Margin="10 0 0 0" 
+                              FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Type:"/>
+                
+                <ComboBox Margin="10 0 0 0"
+                          VerticalAlignment="Center"
+                          SelectedIndex="{Binding ViewModel.WriteIndex}"
+                          IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}">
+                    <ComboBoxItem Content="Byte"/>
+                    <ComboBoxItem Content="Short"/>
+                    <ComboBoxItem Content="Int"/>
+                    <ComboBoxItem Content="Float"/>
+                    <ComboBoxItem Content="Double"/>
+                    <ComboBoxItem Content="String"/>
+                </ComboBox>
+                
+                <ui:TextBlock Margin="10 0 0 0" 
+                              FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Value:"/>
+                
+                <ui:TextBox Margin="10 0 0 0"
+                            VerticalAlignment="Center"
+                            PlaceholderText="0xFF"
+                            Text="{Binding ViewModel.WriteValue}"
+                            IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
+                
+                <ui:Button Margin="10 0 0 0" 
+                           VerticalAlignment="Center"
+                           Content="Write"
+                           IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"
+                           Command="{Binding ViewModel.ButtonActionCommand}"
+                           CommandParameter="write"/>
+                
+            </StackPanel>
+            
+            <ui:TextBlock Margin="0 15 0 0" 
+                          FontTypography="Subtitle"
+                          VerticalAlignment="Center"
+                          HorizontalAlignment="Center"
+                          Text="Memory Reading:"/>
+            
+            <StackPanel Orientation="Horizontal"
+                        Margin="0 15 0 0"
+                        HorizontalAlignment="Center">
+
+                <ui:TextBlock FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Address:"/>
+
+                <ui:TextBox Margin="10 0 0 0"
+                            VerticalAlignment="Center"
+                            PlaceholderText="11EA2007D10"
+                            IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
+                
+                <ui:TextBlock Margin="10 0 0 0" 
+                              FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Type:"/>
+                
+                <ComboBox Margin="10 0 0 0"
+                          VerticalAlignment="Center"
+                          SelectedIndex="0"
+                          IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}">
+                    <ComboBoxItem Content="Byte"/>
+                    <ComboBoxItem Content="Short"/>
+                    <ComboBoxItem Content="Int"/>
+                    <ComboBoxItem Content="Float"/>
+                    <ComboBoxItem Content="Double"/>
+                    <ComboBoxItem Content="String"/>
+                </ComboBox>
+                
+                <ui:TextBlock Margin="10 0 0 0" 
+                              FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Value:"/>
+                
+                <ui:TextBox Margin="10 0 0 0"
+                            VerticalAlignment="Center"
+                            IsReadOnly="True"
+                            IsReadOnlyCaretVisible="True"
+                            Text="0"
+                            IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
+                
+                <ui:Button Margin="10 0 0 0" 
+                           VerticalAlignment="Center"
+                           Content="Read"
+                           IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
+                
+            </StackPanel>
+            
+            <ui:TextBlock Margin="0 15 0 0" 
+                          FontTypography="Subtitle"
+                          VerticalAlignment="Center"
+                          HorizontalAlignment="Center"
+                          Text="Protection Modifying:"/>
+            
+            <StackPanel Orientation="Horizontal"
+                        Margin="0 15 0 0"
+                        HorizontalAlignment="Center">
+
+                <ui:TextBlock FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="Address:"/>
+
+                <ui:TextBox Margin="10 0 0 0"
+                            VerticalAlignment="Center"
+                            PlaceholderText="11EA2007D10"
+                            IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
+                
+                <ui:TextBlock Margin="10 0 0 0" 
+                              FontTypography="BodyStrong"
+                              VerticalAlignment="Center"
+                              Text="New Protection:"/>
+                
+                <ComboBox Margin="10 0 0 0"
+                          VerticalAlignment="Center"
+                          SelectedIndex="0"
+                          IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}">
+                    <ComboBoxItem Content="Execute"/>
+                    <ComboBoxItem Content="ExecuteRead"/>
+                    <ComboBoxItem Content="ExecuteReadWrite"/>
+                    <ComboBoxItem Content="ExecuteWriteCopy"/>
+                    <ComboBoxItem Content="NoAccess"/>
+                    <ComboBoxItem Content="ReadOnly"/>
+                    <ComboBoxItem Content="ReadWrite"/>
+                    <ComboBoxItem Content="WriteCopy"/>
+                    <ComboBoxItem Content="GuardModifierFlag"/>
+                    <ComboBoxItem Content="NoCacheModifierFlag"/>
+                    <ComboBoxItem Content="WriteCombineModifierFlag"/>
+                </ComboBox>
+                
+                <ui:Button Margin="10 0 0 0" 
+                           VerticalAlignment="Center"
+                           Content="Change Protection"
+                           IsEnabled="{Binding ViewModel.IsProcessOpen, Mode=OneWay}"/>
+                
+            </StackPanel>
             
         </StackPanel>
     </Grid>

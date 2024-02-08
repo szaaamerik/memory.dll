@@ -1,8 +1,5 @@
 ﻿namespace Memory;
 
-/// <summary>
-/// AoB scan information.
-/// </summary>
 internal struct MemoryRegionResult
 {
     public nuint CurrentBaseAddress { get; init; }

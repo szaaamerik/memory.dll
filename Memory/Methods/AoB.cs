@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -29,6 +30,11 @@ public partial class Mem
     {
         return Task.Run(() =>
         {
+            if (!IsProcessRunning(MProc.ProcessId))
+            {
+                return Array.Empty<nuint>();
+            }
+            
             List<MemoryRegionResult> memRegionList = new();
 
             search = search.Replace('*', '?');
@@ -135,7 +141,10 @@ public partial class Mem
         }
 
         var buffer = Marshal.AllocHGlobal((int)item.RegionSize);
-        ReadProcessMemory(MProc.Handle, item.CurrentBaseAddress, buffer, (nuint)item.RegionSize, out ulong bytesRead);
+        if (!ReadProcessMemory(MProc.Handle, item.CurrentBaseAddress, buffer, (nuint)item.RegionSize, out var bytesRead))
+        {
+            return Array.Empty<nuint>();
+        }
 
         var result = 0 - aobPattern.Length;
         List<nuint> ret = new();

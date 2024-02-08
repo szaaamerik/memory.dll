@@ -3,7 +3,7 @@ using System.Linq;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
+using System.Threading.Tasks;
 using static Memory.Imps;
 
 namespace Memory;
@@ -19,7 +19,7 @@ public partial class Mem
         if (MProc.Is64Bit)
         {
             MemoryBasicInformation64 tmp64 = new();
-            retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp64, new((uint)Marshal.SizeOf(tmp64)));
+            retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp64, new UIntPtr((uint)Marshal.SizeOf(tmp64)));
 
             lpBuffer.BaseAddress = tmp64.BaseAddress;
             lpBuffer.AllocationBase = tmp64.AllocationBase;
@@ -33,7 +33,7 @@ public partial class Mem
         }
 
         MemoryBasicInformation32 tmp32 = new();
-        retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp32, new((uint)Marshal.SizeOf(tmp32)));
+        retVal = Native_VirtualQueryEx(hProcess, lpAddress, out tmp32, new UIntPtr((uint)Marshal.SizeOf(tmp32)));
 
         lpBuffer.BaseAddress = tmp32.BaseAddress;
         lpBuffer.AllocationBase = tmp32.AllocationBase;
@@ -49,40 +49,54 @@ public partial class Mem
     public enum OpenProcessResults
     {
         InvalidArgument = 0,
+        ProcessNotFound,
         NotResponding,
-        FailedOpeningHandle,
+        FailedToOpenHandle,
         Success,
     }
 
-    public OpenProcessResults OpenProcess(int pid)
+    public OpenProcessResults OpenProcess(int processId)
     {
-        if (pid <= 0)
+        var found = IsProcessRunning(processId);
+        if (!found)
         {
-            return OpenProcessResults.InvalidArgument;
+            return OpenProcessResults.ProcessNotFound;
         }
         
-        MProc.Process = Process.GetProcessById(pid);
+        MProc.ProcessId = processId;
+        MProc.Process = Process.GetProcessById(processId);
         if (MProc.Process is { Responding: false })
         {
             return OpenProcessResults.NotResponding;
         }
 
         const int processAllAccess = 0x1F0FFF;
-        MProc.Handle = Imps.OpenProcess(processAllAccess, false, pid);
+        MProc.Handle = Imps.OpenProcess(processAllAccess, false, processId);
         if (MProc.Handle == nint.Zero)
         {
-            return OpenProcessResults.FailedOpeningHandle;
+            return OpenProcessResults.FailedToOpenHandle;
         }
 
         MProc.Is64Bit = IsWow64Process(MProc.Handle, out var retVal) && !retVal;
         return OpenProcessResults.Success;
     }
 
+    private static bool IsProcessRunning(int processId)
+    {
+        if (processId <= 0)
+        {
+            return false;
+        }
+        
+        var runningProcesses = Process.GetProcesses().Select(p => p.Id);
+        return runningProcesses.Contains(processId);
+    }
+    
     public OpenProcessResults OpenProcess(string proc)
     {
         return string.IsNullOrWhiteSpace(proc) ? OpenProcessResults.InvalidArgument : OpenProcess(GetProcIdFromName(proc));
     }
-    
+
     public static int GetProcIdFromName(string name)
     {
         var processlist = Process.GetProcesses();
@@ -95,7 +109,7 @@ public partial class Mem
             where theProcess.ProcessName.Equals(name, StringComparison.CurrentCultureIgnoreCase)
             select theProcess.Id).FirstOrDefault();
     }
-
+    
     public bool ChangeProtection(nuint address, MemoryProtection newProtection, out MemoryProtection oldProtection)
     {
         if (address != nuint.Zero && MProc.Handle != nint.Zero)
@@ -110,6 +124,11 @@ public partial class Mem
     
     public nuint FollowMultiLevelPointer(nuint address, IEnumerable<int> offsets)
     {
+        if (!IsProcessRunning(MProc.ProcessId))
+        {
+            return 0;
+        }
+        
         var enumerable = offsets as int[] ?? offsets.ToArray();
         if (!enumerable.Any())
         {
@@ -126,9 +145,21 @@ public partial class Mem
         return finalAddress;
     }
 
+    public nuint CreateDetour(nuint address, string newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
+    {
+        var bytes = Utils.StringToBytes(newBytes);
+        return CreateDetour(address, bytes, replaceCount, varBytes, varOffset, size, makeDetour);
+    }
+    
     public nuint CreateDetour(nuint address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
         int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
     {
+        if (!IsProcessRunning(MProc.ProcessId))
+        {
+            return 0;
+        }
+        
         if (replaceCount < 5)
         {
             throw new ArgumentOutOfRangeException(nameof(replaceCount));
@@ -184,9 +215,21 @@ public partial class Mem
         return caveAddress;
     }
 
+    public nuint CreateFarDetour(nuint address, string newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
+    {
+        var bytes = Utils.StringToBytes(newBytes);
+        return CreateFarDetour(address, bytes, replaceCount, varBytes, varOffset, size, makeDetour);
+    }
+    
     public nuint CreateFarDetour(nuint address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
         int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
     {
+        if (!IsProcessRunning(MProc.ProcessId))
+        {
+            return 0;
+        }
+        
         if (replaceCount < 14)
         {
             throw new ArgumentOutOfRangeException(nameof(replaceCount));
@@ -224,15 +267,27 @@ public partial class Mem
         return caveAddress;
     }
 
-    public nuint CreateCallDetour(nuint address, byte[] newBytes, int replaceCount,
-        byte[] varBytes = null!, int varOffset = 0, int size = 0x1000, bool makeDetour = true)
+    public nuint CreateCallDetour(nuint address, string newBytes, int replaceCount, byte[] varBytes = null!,
+        int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
     {
+        var bytes = Utils.StringToBytes(newBytes);
+        return CreateCallDetour(address, bytes, replaceCount, varBytes, varOffset, size, makeDetour);
+    }
+    
+    public nuint CreateCallDetour(nuint address, byte[] newBytes, int replaceCount,
+        byte[] varBytes = null!, int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
+    {
+        if (!IsProcessRunning(MProc.ProcessId))
+        {
+            return 0;
+        }
+        
         if (replaceCount < 16)
         {
             throw new ArgumentOutOfRangeException(nameof(replaceCount));
         }
         
-        var caveAddress = VirtualAllocEx(MProc.Handle, nuint.Zero, (uint)size, 0x1000 | 0x2000, 0x40);
+        var caveAddress = VirtualAllocEx(MProc.Handle, nuint.Zero, size, 0x1000 | 0x2000, 0x40);
         var nopsNeeded = replaceCount > 16 ? replaceCount - 16 : 0;
         var jmpBytes = new byte[16 + nopsNeeded];
         jmpBytes[0] = 0xFF;
@@ -284,15 +339,20 @@ public partial class Mem
         switch (type)
         {
             case DetourType.Jump:
+            {
                 detourBytes[0] = 0xE9;
                 BitConverter.GetBytes((int)((long)target - (long)address - 5)).CopyTo(detourBytes, 1);
                 break;
+            }
             case DetourType.JumpFar:
+            {
                 detourBytes[0] = 0xFF;
                 detourBytes[1] = 0x25;
                 BitConverter.GetBytes((long)target).CopyTo(detourBytes, 6);
                 break;
+            }
             case DetourType.Call:
+            {
                 detourBytes[0] = 0xFF;
                 detourBytes[1] = 0x15;
                 detourBytes[2] = 0x02;
@@ -300,8 +360,11 @@ public partial class Mem
                 detourBytes[7] = 0x08;
                 BitConverter.GetBytes((long)target).CopyTo(detourBytes, 8);
                 break;
+            }
             default:
+            {
                 throw new Exception("Achievement unlocked: How Did We Get Here?");
+            }
         }
 
         var nopsNeeded = type switch
@@ -322,6 +385,11 @@ public partial class Mem
     
     private nuint FindFreeBlockForRegion(nuint baseAddress, uint size)
     {
+        if (!IsProcessRunning(MProc.ProcessId))
+        {
+            return 0;
+        }
+        
         var minAddress = nuint.Subtract(baseAddress, 0x70000000);
         var maxAddress = nuint.Add(baseAddress, 0x70000000);
 

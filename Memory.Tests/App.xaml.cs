@@ -1,25 +1,35 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
+using Memory.Tests.Services;
+using Memory.Tests.ViewModels;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Wpf.Ui;
 
 namespace Memory.Tests;
 
-/// <summary>
-/// Interaction logic for App.xaml
-/// </summary>
 public partial class App
 {
-    private void App_OnStartup(object sender, StartupEventArgs e)
-    {
-        throw new NotImplementedException();
-    }
+    private static readonly IHost Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+        .ConfigureAppConfiguration(c =>
+        {
+            c.SetBasePath(AppContext.BaseDirectory);
+        }).
+        ConfigureServices((_, services) =>
+        {
+            services.AddHostedService<ApplicationHostService>();
+            services.AddSingleton<INavigationService, NavigationService>();
+            services.AddSingleton<MainWindowViewModel>();
+            services.AddSingleton<INavigationWindow, Views.MainWindow>();
+        }).Build();
+    
+    
+    private async void App_OnStartup(object sender, StartupEventArgs e) => await Host.StartAsync();
 
-    private void App_OnExit(object sender, ExitEventArgs e)
+    private async void App_OnExit(object sender, ExitEventArgs e)
     {
-        throw new NotImplementedException();
+        await Host.StopAsync();
+        Host.Dispose();
     }
 }
