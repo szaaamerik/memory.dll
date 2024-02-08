@@ -1,14 +1,20 @@
 ﻿#nullable enable
 using System;
 using System.Linq;
+using System.Text;
 
 namespace Memory.Resources;
 
 // ReSharper disable ConditionIsAlwaysTrueOrFalse
 public class Detour
 {
-    public bool Setup(nuint address, byte[] originalBytes, byte[] newBytes, int replaceCount, uint varOffset = 0)
+    public bool Setup(nuint address, Mem.DetourType type, byte[] originalBytes, byte[] newBytes, int replaceCount, uint varOffset = 0)
     {
+        if (IsSetup)
+        {
+            return true;
+        }
+        
         if (replaceCount < 5)
         {
             throw new ArgumentOutOfRangeException(nameof(replaceCount));
@@ -31,15 +37,30 @@ public class Detour
             return false;
         }
 
-        Mem.DefaultInstance.CreateDetour(DetourAddr, newBytes, replaceCount);
-        VariableAddress = AllocatedAddress + (UIntPtr)newBytes.Length + varOffset + 5;
+        AllocatedAddress = type switch
+        {
+            Mem.DetourType.Jump => Mem.DefaultInstance.CreateDetour(address, newBytes, replaceCount),
+            Mem.DetourType.JumpFar => Mem.DefaultInstance.CreateFarDetour(address, newBytes, replaceCount),
+            Mem.DetourType.Call => Mem.DefaultInstance.CreateCallDetour(address, newBytes, replaceCount),
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+        };
+
+        varOffset += type switch
+        {
+            Mem.DetourType.Jump => 5,
+            Mem.DetourType.JumpFar => 14,
+            Mem.DetourType.Call => 1,
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+        };
+
+        VariableAddress = AllocatedAddress + (UIntPtr)newBytes.Length + varOffset;
         _newBytes = Mem.DefaultInstance.ReadArrayMemory<byte>(DetourAddr, replaceCount);
-        return true;
+        return IsSetup = true;
     }
     
     public void Destroy()
     {
-        if (AllocatedAddress == UIntPtr.Zero || _realOriginalBytes == null)
+        if (!IsSetup)
         {
             return;
         }
@@ -71,6 +92,56 @@ public class Detour
     public void Hook() => Mem.DefaultInstance.WriteArrayMemory(DetourAddr, _newBytes);
     public void UnHook() => Mem.DefaultInstance.WriteArrayMemory(DetourAddr, _realOriginalBytes);
         
+    public void UpdateVariable<T>(T value, uint varOffset = 0) where T : unmanaged
+    {
+        if (VariableAddress == UIntPtr.Zero || !IsSetup)
+        {
+            return;
+        }
+        
+        Mem.DefaultInstance.WriteMemory(VariableAddress + varOffset, value);
+    }
+    
+    public void UpdateVariable<T>(T[] value, uint varOffset = 0) where T : unmanaged
+    {
+        if (VariableAddress == UIntPtr.Zero || !IsSetup)
+        {
+            return;
+        }
+        
+        Mem.DefaultInstance.WriteArrayMemory(VariableAddress + varOffset, value);
+    }
+    
+    public T ReadVariable<T>(uint varOffset = 0) where T : unmanaged
+    {
+        return VariableAddress == UIntPtr.Zero || !IsSetup
+            ? new T()
+            : Mem.DefaultInstance.ReadMemory<T>(VariableAddress + varOffset);
+    }
+    
+    public override string ToString()
+    {
+        var sb = new StringBuilder(512);
+        sb.Append("IsHooked: ").AppendLine(IsHooked.ToString());
+        sb.Append("IsSetup: ").AppendLine(IsSetup.ToString());
+        sb.Append("Detour Addr: ").AppendLine(DetourAddr.ToString("X"));
+        sb.Append("Allocated Addr: ").AppendLine(AllocatedAddress.ToString("X"));
+        sb.Append("Variable Addr: ").AppendLine(VariableAddress.ToString("X"));
+
+        if (_realOriginalBytes != null)
+        {
+            sb.Append("Original Bytes: ").AppendLine(BitConverter.ToString(_realOriginalBytes).Replace("-", " "));
+        }
+
+        if (_newBytes != null)
+        {
+            sb.Append("New Bytes: ").AppendLine(BitConverter.ToString(_newBytes).Replace("-", " "));
+        }
+        
+        return sb.ToString();
+    }
+
+    
     public bool IsHooked { get; private set; }
     public bool IsSetup { get; private set; }
     public UIntPtr VariableAddress { get; private set; }
