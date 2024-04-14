@@ -3,14 +3,14 @@ using System.Linq;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
+using Memory.Types;
 using static Memory.Imps;
 
 namespace Memory;
 
 public partial class Mem
 {
-    public static Mem DefaultInstance { get; private set; } = null!;
+    internal static Mem DefaultInstance { get; private set; } = null!;
     public readonly Proc MProc = new();
 
     public Mem()
@@ -70,7 +70,15 @@ public partial class Mem
         }
         
         MProc.ProcessId = processId;
-        MProc.Process = Process.GetProcessById(processId);
+        try
+        {
+            MProc.Process = Process.GetProcessById(processId);
+        }
+        catch
+        {
+            return OpenProcessResults.ProcessNotFound;
+        }
+
         if (MProc.Process is { Responding: false })
         {
             return OpenProcessResults.NotResponding;
@@ -136,7 +144,7 @@ public partial class Mem
         }
         
         var enumerable = offsets as int[] ?? offsets.ToArray();
-        if (!enumerable.Any())
+        if (enumerable.Length == 0)
         {
             return 0;
         }
@@ -150,13 +158,6 @@ public partial class Mem
         
         return finalAddress;
     }
-
-    public nuint CreateDetour(nuint address, string newBytes, int replaceCount, byte[] varBytes = null!,
-        int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
-    {
-        var bytes = Utils.StringToBytes(newBytes);
-        return CreateDetour(address, bytes, replaceCount, varBytes, varOffset, size, makeDetour);
-    }
     
     public nuint CreateDetour(nuint address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
         int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
@@ -165,24 +166,20 @@ public partial class Mem
         {
             return 0;
         }
-        
-        if (replaceCount < 5)
-        {
-            throw new ArgumentOutOfRangeException(nameof(replaceCount));
-        }
-        
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(replaceCount, 5);
+
         var caveAddress = nuint.Zero;
         var preferred = address;
 
-        const int tryCount = 25;
-        for (var i = 0; i < tryCount && caveAddress == nuint.Zero; i++)
+        while (caveAddress == 0)
         {
             var allocAddress = FindFreeBlockForRegion(preferred, size);
             caveAddress = VirtualAllocEx(MProc.Handle, allocAddress, size, MemCommit | MemReserve, ExecuteReadwrite);
 
             if (caveAddress != nuint.Zero)
             {
-                continue;
+                break;
             }
             
             const int preferredOffset = 0x10000;
@@ -220,13 +217,6 @@ public partial class Mem
 
         return caveAddress;
     }
-
-    public nuint CreateFarDetour(nuint address, string newBytes, int replaceCount, byte[] varBytes = null!,
-        int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
-    {
-        var bytes = Utils.StringToBytes(newBytes);
-        return CreateFarDetour(address, bytes, replaceCount, varBytes, varOffset, size, makeDetour);
-    }
     
     public nuint CreateFarDetour(nuint address, byte[] newBytes, int replaceCount, byte[] varBytes = null!,
         int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
@@ -235,11 +225,8 @@ public partial class Mem
         {
             return 0;
         }
-        
-        if (replaceCount < 14)
-        {
-            throw new ArgumentOutOfRangeException(nameof(replaceCount));
-        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(replaceCount, 14);
 
         var caveAddress = VirtualAllocEx(MProc.Handle, nuint.Zero, size, MemCommit | MemReserve, ExecuteReadwrite);
         var nopsNeeded = replaceCount > 14 ? replaceCount - 14 : 0;
@@ -272,13 +259,6 @@ public partial class Mem
         
         return caveAddress;
     }
-
-    public nuint CreateCallDetour(nuint address, string newBytes, int replaceCount, byte[] varBytes = null!,
-        int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
-    {
-        var bytes = Utils.StringToBytes(newBytes);
-        return CreateCallDetour(address, bytes, replaceCount, varBytes, varOffset, size, makeDetour);
-    }
     
     public nuint CreateCallDetour(nuint address, byte[] newBytes, int replaceCount,
         byte[] varBytes = null!, int varOffset = 0, uint size = 0x1000, bool makeDetour = true)
@@ -287,12 +267,9 @@ public partial class Mem
         {
             return 0;
         }
-        
-        if (replaceCount < 16)
-        {
-            throw new ArgumentOutOfRangeException(nameof(replaceCount));
-        }
-        
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(replaceCount, 16);
+
         var caveAddress = VirtualAllocEx(MProc.Handle, nuint.Zero, size, 0x1000 | 0x2000, 0x40);
         var nopsNeeded = replaceCount > 16 ? replaceCount - 16 : 0;
         var jmpBytes = new byte[16 + nopsNeeded];

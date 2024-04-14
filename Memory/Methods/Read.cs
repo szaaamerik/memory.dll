@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using static Memory.Imps;
@@ -46,7 +45,7 @@ public partial class Mem
         return result;
     }
     
-    public string ReadStringMemory(nuint address, int length, Encoding stringEncoding = null)
+    public string ReadStringMemory(nuint address, int length, Encoding? stringEncoding = null)
     {
         if (!IsProcessRunning(MProc.ProcessId))
         {

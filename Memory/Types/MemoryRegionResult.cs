@@ -1,4 +1,4 @@
-﻿namespace Memory;
+﻿namespace Memory.Types;
 
 internal struct MemoryRegionResult
 {

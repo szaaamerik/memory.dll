@@ -88,8 +88,8 @@ public class Detour
         IsHooked = !IsHooked;
     }
 
-    public void Hook() => Mem.DefaultInstance.WriteArrayMemory(DetourAddr, _newBytes);
-    public void UnHook() => Mem.DefaultInstance.WriteArrayMemory(DetourAddr, _realOriginalBytes);
+    public void Hook() => Mem.DefaultInstance.WriteArrayMemory(DetourAddr, _newBytes ?? Array.Empty<byte>());
+    public void UnHook() => Mem.DefaultInstance.WriteArrayMemory(DetourAddr, _realOriginalBytes ?? Array.Empty<byte>());
         
     public void UpdateVariable<T>(T value, uint varOffset = 0) where T : unmanaged
     {

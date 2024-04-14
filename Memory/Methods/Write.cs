@@ -62,7 +62,7 @@ public partial class Mem
         return ret;
     }
 
-    public bool WriteStringMemory(nuint address, string write, Encoding stringEncoding = null, bool removeWriteProtection = true)
+    public bool WriteStringMemory(nuint address, string write, Encoding? stringEncoding = null, bool removeWriteProtection = true)
     {
         if (!IsProcessRunning(MProc.ProcessId))
         {

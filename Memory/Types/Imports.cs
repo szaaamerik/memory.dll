@@ -56,16 +56,16 @@ public static partial class Imps
     public const uint MemReserve = 0x00002000;
     public const uint MemRelease = 0x8000;
 
-    public const uint Readonly = 0x02;
-    public const uint Readwrite = 0x04;
-    public const uint Writecopy = 0x08;
+    public const uint ReadOnly = 0x02;
+    public const uint ReadWrite = 0x04;
+    public const uint WriteCopy = 0x08;
     public const uint ExecuteReadwrite = 0x40;
-    public const uint ExecuteWritecopy = 0x80;
+    public const uint ExecuteWriteCopy = 0x80;
     public const uint Execute = 0x10;
     public const uint ExecuteRead = 0x20;
 
     public const uint Guard = 0x100;
-    public const uint Noaccess = 0x01;
+    public const uint NoAccess = 0x01;
 
     public const uint MemPrivate = 0x20000;
     public const uint MemImage = 0x1000000;

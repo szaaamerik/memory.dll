@@ -1,0 +1,7 @@
+﻿OpenProcess
+WriteProcessMemory
+ReadProcessMemory
+VirtualProtectEx
+VirtualFreeEx
+VirtualAllocEx
+VirtualQueryEx

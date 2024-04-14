@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace Memory;
+namespace Memory.Types;
 
 public class Proc
 {
