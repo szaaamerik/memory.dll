@@ -1,3 +1,8 @@
+# memory.dll
+
+> [!WARNING]
+> This library is unfinished and abandoned. Keep your expectations low.
+
 ## Description
 Meriks's modified version of the original [memory.dll](https://github.com/erfg12/memory.dll), hopefully delivering a faster, and better-practiced library for process memory manipulation.
 
